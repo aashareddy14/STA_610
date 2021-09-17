@@ -1,0 +1,289 @@
+---
+title: "lab_04"
+author: "Aasha Reddy"
+date: "9/17/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(rstan)
+library(brms)
+library(tidybayes)
+library(lme4)
+library(sjPlot)
+library(tidyverse)
+library(lattice)
+library(knitr)
+library(patchwork)
+library(lmerTest)
+
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+```
+
+```{r}
+# load data
+load("data/hc2014.RData")
+```
+
+# EDA
+
+According to the histogram, the distribution of netincome is relatively normal (we restrict the x axis in the below graph). The distribution is somewhat right-skewed. We do not believe a log transformation of netincome is appropriate given this would eliminate all of the negative values. The QQ plot is roughly normal (in the below plot we trim off the top and bottom 5% of values). 
+
+```{r}
+# restrict x axis 
+ggplot(hc2014, aes(x = netincome)) + 
+  geom_histogram(bins = 50) + 
+  labs(title = "Histogram of Netincome") + 
+  xlim(c(-5.175e+06, 9.295e+06))
+
+# qq plot for netincome
+hc2014 %>%
+  filter(netincome < quantile(hc2014$netincome, 0.95, na.rm = T)) %>%
+  filter(netincome > quantile(hc2014$netincome, 0.05, na.rm = T)) %>%
+  pull(netincome) %>%
+  qqnorm()
+
+```
+
+We can see below that the distribution of the mean net income by state is also relatively normal which is an assumption we care about for our model. This justifies a state specific intercept. 
+
+```{r}
+means <- hc2014 %>%
+  mutate(netincome = netincome / 1000000) %>%
+  filter(!is.na(hc2014$netincome)) %>%
+  group_by(state) %>%
+  summarize(mean_netincome = mean(netincome), n = n())
+
+knitr::kable(means, digit = 3, caption = "Mean net income (in million) and number of hospitals in each state", 
+             col.names = c("State", "Mean Net Income", "Count"))
+
+ggplot(data =  means, aes(x = mean_netincome)) + 
+  geom_density() + 
+  labs(title = "Distribution of Mean netincomes by state in millions", 
+       x = "Mean Net Income")
+```
+
+We can also from the below boxplots that netincome varies by state, which again justifies a random intercept.  
+
+```{r, fig.height=12}
+ggplot(hc2014, aes(x = state, y = netincome)) + 
+  geom_boxplot() + 
+  coord_flip() + 
+  ylim(c(-5.175e+06, 9.295e+06)) + 
+  labs(title = "Distribution of netincome by state")
+```
+
+We can also see that some states with smaller sample sizes have more extreme values. We decide not to disregard these potential outliers in our model. 
+
+```{r}
+hc2014 %>%
+  group_by(state) %>%
+  summarize(n = n(), avg = mean(netincome, na.rm = TRUE)) %>%
+  ggplot(., aes(x = n, y = avg)) + 
+  geom_point() + 
+  labs(title = "Sample size and mean net income by state", 
+       y = "Mean net income", 
+       x = "sample size")
+  
+```
+
+We also would like to examine the relationship between netincome and the control grouping variable. The below plot suggests that control groups have a sufficient sample size (the smallest being 42 observations). As we are using random effects, it also does not matter much how large our sample sizes are since we expect shrinkage towards the mean. 
+
+```{r}
+hc2014 %>%
+  group_by(control) %>%
+  summarize(n = n(), avg = mean(netincome, na.rm = TRUE)) %>%
+  ggplot(., aes(x = n, y = avg)) + 
+  geom_point() + 
+  labs(title = "Sample size by control group vs. average netincome", 
+       x = "Sample size", 
+       y = "Mean net income")
+```
+
+We can see based on the below boxplots of netincome by control group that most of the groups are centered around a similar mean. For this reason, we could try to include a random intercept. 
+
+```{r}
+ggplot(hc2014) + 
+  geom_boxplot(aes(x = netincome, y = control)) + 
+  xlim(c(-1e08, 1e08)) + 
+  labs(title = "Boxplots of netincome by control group")
+```
+
+Examining the relationship between netincome and number of beds, we see that the slope for each state is similar to the slope across all the states. This justifies a fixed effect for numbeds. 
+
+```{r}
+plot1 <- ggplot(hc2014, aes(x = numbeds, y = netincome)) + 
+  geom_point() + 
+  labs() + 
+  geom_smooth(method = "lm") + 
+  xlim(c(2, 2000)) + 
+  ylim(c(-1e08, 5.5e08)) + 
+  labs(title = "Netincome vs. numbeds with OLS estimate for all states")
+```
+
+```{r}
+set.seed(99)
+plot2 <- hc2014 %>%
+  filter(state %in% c("CA", "TX", "FL", "OH")) %>%
+  ggplot(., aes(x = numbeds, y = netincome)) + 
+  geom_point() +
+  facet_wrap(~state) + 
+  geom_smooth(method = "lm") + 
+  labs(title = "Netincome vs. numbeds with OLS estimate for 4 \n selected states with largest sample size") + 
+  xlim(c(2, 2000)) + 
+  ylim(c(-1e08, 5.5e08))
+
+plot1 + plot2
+```
+
+
+## Model Specification 
+
+$$
+y_{ijk} = \mu + \alpha_j + \gamma_k  + \beta * B_{ij} + \epsilon_{ijk}
+$$
+where $i$ indicates the hospital i, $j$ indicates the state j and k is the type of control. $B_{ij}$ is numbeds. 
+
+$$
+\alpha_j \sim \mathcal{N}(0, \tau_{\alpha}^2)
+$$
+$$
+\epsilon_{ijk} \sim \mathcal{N}(0, \sigma^2)
+$$
+$$
+\gamma_k \sim \mathcal{N}(0, \tau_{\gamma}^2)
+$$
+# Model Specification 
+
+We set the below priors. We selected priors that looked appropriate for our model. For the tau's, we are setting very weak priors because we know very little about variance of the random effects. For the grand mean, we assume a normal prior of N(0, 5) since the means were relatively centered around 0. From our intuition, a variance of 5 makes sense for our prior on $\mu$. 
+
+$$
+\begin{align}
+\mu &\sim \mathcal{N}(0, 5) \\
+\sigma^2 &\sim \mathcal{IG}(0.5, 5) \\
+\beta &\sim \mathcal{N}(0, 5) \\
+\tau_{alpha}^2 &\sim \mathcal{IG}(0.1, 0.1) \\
+\tau_{alpha}^2 &\sim \mathcal{IG}(0.1, 0.1) \\
+\end{align}
+$$
+
+For our model, we scaled the netincome values by dividing them by 1,000,000.
+
+```{r, cache=TRUE}
+hc2014_scaled <- hc2014 %>%
+  mutate(netincome = netincome / 1000000)
+  
+prior <- c(set_prior("normal(0,5)", class = "Intercept"),
+set_prior("inv_gamma(0.5,5)", class = 'sd'), # Sigma
+set_prior("normal(0, 5)", class = 'b', coef = "numbeds"),
+set_prior("inv_gamma(0.1, 0.1)", class = 'sd', group = "state", coef = "Intercept"), 
+set_prior("inv_gamma(0.1, 0.1)", class = 'sd', group = "control", coef = "Intercept")
+)
+
+
+model2 <- brm(data = hc2014_scaled, 
+              family = gaussian, 
+              netincome ~ 1 + (1 |state) + (1|control) + numbeds, 
+              prior = prior, 
+              iter = 3000, warmup = 2000, seed = 99)
+```
+
+# Evaluate diagnostics 
+
+We can see from the below plots that the chains seem to converge. 
+
+```{r}
+plot(model2)
+```
+
+# Results
+
+For most of the states, the mean is very similar to each other. The random effects for state are relatively centered around 0. The intervals are also very similar across the states. No point estimates are outside of the other state intervals, so there is not enough evidence to say that the random effects are different between any two hospitals (not really enough information to provide a ranking). We can provide a ranking based on the point estimate but there is a lot of uncertainty around this. 
+
+```{r, fig.height=12}
+# plot group means 
+tmp <- model2 %>%
+  spread_draws(b_Intercept, r_state[state,]) %>%
+  median_qi(`Group Means` = r_state)
+sorted_state_names <- tmp %>%
+  arrange(`Group Means`, desc = T) %>% pull(state)
+tmp %>%
+  ggplot(aes(y = factor(state, levels = sorted_state_names), 
+             x = `Group Means`, xmin = .lower, xmax = .upper)) +
+  geom_pointinterval(orientation = "horizontal") + 
+  labs(title = "Random effect of netincomes State", 
+       y = "State", 
+       x = "Random Effect") + 
+    geom_vline(aes(xintercept = 0))
+```
+
+Government-federal and government-state owned hospitals seems to have on average a negative effect on netincome.   Non-profit church owned hospitals seems to have on average a positive effect on netincome. 
+
+```{r}
+# plot group means 
+tmp <- model2 %>%
+  spread_draws(b_Intercept, r_control[control,]) %>%
+  median_qi(`Group Means` = r_control)
+sorted_state_names <- tmp %>%
+  arrange(`Group Means`, desc = T) %>% pull(control)
+tmp %>%
+  ggplot(aes(y = factor(control, levels = sorted_state_names), 
+             x = `Group Means`, xmin = .lower, xmax = .upper)) +
+  geom_pointinterval(orientation = "horizontal") + 
+  labs(title = "Random effect of netincomes Control", 
+       y = "Control", 
+       x = "Random Effect") + 
+  geom_vline(aes(xintercept = 0))
+```
+
+Below are our estimates of the parameters, including the 95% credible intervals. We can see that our estimate of $\mu$, the grand mean is -11.321 million (credible interval of [-18.885, -4.311]). This suggests that the hospitals at baseline (no beds) are expected to on average lose money. 
+
+Our estimate of numbeds is 0.101 (credible interval of [0.087, 0.114]). We expect netincome to increase by 0.101 million on average for each additional bed. 
+
+This is evidence that health care costs too much money! 
+
+```{r}
+# table output
+summary_pars <- rbind(
+  summary(model2)$fixed,
+  summary(model2)$spec_pars,
+  summary(model2)$random$control,
+  summary(model2)$random$state
+)[, c(1,3,4)]
+rownames(summary_pars) <- c("Intercept (grand mean)", "numbeds", "sigma", "sd_control", "sd_state")
+colnames(summary_pars) <- c("Est", "Lwr", "Upr")
+summary_pars %>%
+  knitr::kable(caption = "Estimated posterior parameters", 
+               digits = 3)
+
+
+# alphas 
+model2 %>%
+  spread_draws(b_Intercept, r_state[state,]) %>%
+  median_qi(`Group Means` = b_Intercept + r_state) %>%
+  select(1, 2, 3, 4) %>%
+  knitr::kable(caption = "Estimated group means of netincome by state",
+               digits = 3)
+
+# gammas 
+model2 %>%
+  spread_draws(b_Intercept, r_control[control,]) %>%
+  median_qi(`Group Means` = b_Intercept + r_control) %>%
+  select(1, 2, 3, 4) %>%
+  knitr::kable(caption = "Estimated group means of netincome by control", 
+               digits = 3)
+  
+```
+
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
