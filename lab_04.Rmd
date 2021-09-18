@@ -8,10 +8,10 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 ```
 
-```{r}
+```{r, warning = FALSE}
 library(rstan)
 library(brms)
 library(tidybayes)
@@ -37,8 +37,8 @@ load("data/hc2014.RData")
 
 According to the histogram, the distribution of netincome is relatively normal (we restrict the x axis in the below graph). The distribution is somewhat right-skewed. We do not believe a log transformation of netincome is appropriate given this would eliminate all of the negative values. The QQ plot is roughly normal (in the below plot we trim off the top and bottom 5% of values). 
 
-```{r}
-# restrict x axis 
+```{r, fig.height=2, fig.width=2}
+# restrict x axis h
 ggplot(hc2014, aes(x = netincome)) + 
   geom_histogram(bins = 50) + 
   labs(title = "Histogram of Netincome") + 
@@ -50,7 +50,6 @@ hc2014 %>%
   filter(netincome > quantile(hc2014$netincome, 0.05, na.rm = T)) %>%
   pull(netincome) %>%
   qqnorm()
-
 ```
 
 We can see below that the distribution of the mean net income by state is also relatively normal which is an assumption we care about for our model. This justifies a state specific intercept. 
@@ -166,13 +165,13 @@ $$
 We set the below priors. We selected priors that looked appropriate for our model. For the tau's, we are setting very weak priors because we know very little about variance of the random effects. For the grand mean, we assume a normal prior of N(0, 5) since the means were relatively centered around 0. From our intuition, a variance of 5 makes sense for our prior on $\mu$. 
 
 $$
-\begin{align}
+\begin{aligned}
 \mu &\sim \mathcal{N}(0, 5) \\
 \sigma^2 &\sim \mathcal{IG}(0.5, 5) \\
 \beta &\sim \mathcal{N}(0, 5) \\
 \tau_{alpha}^2 &\sim \mathcal{IG}(0.1, 0.1) \\
 \tau_{alpha}^2 &\sim \mathcal{IG}(0.1, 0.1) \\
-\end{align}
+\end{aligned}
 $$
 
 For our model, we scaled the netincome values by dividing them by 1,000,000.
@@ -284,6 +283,4 @@ model2 %>%
 ```
 
 
-```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
-```
 
