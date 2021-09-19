@@ -90,7 +90,8 @@ plot1 <- ggplot(hc2014, aes(x = state, y = netincome)) +
   geom_boxplot() + 
   ylim(c(-5.175e+06, 9.295e+06)) + 
   labs(title = "Distribution of netincome by state") + 
-  theme_classic()
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 6))
 
 plot2 <-  hc2014 %>%
   group_by(state) %>%
@@ -231,15 +232,15 @@ model2 <- brm(data = hc2014_scaled,
 
 We can see from the below plots that the chains seem to converge. 
 
-```{r, fig.height=4, fig.width=5}
-plot(model2)
+```{r, fig.height=5, fig.width=5}
+plot(model2, theme = theme_classic(base_size = 9))
 ```
 
 # Results
 
 For most of the states, the mean is very similar to each other. The random effects for state are relatively centered around 0. The intervals are also very similar across the states. No point estimates are outside of the other state intervals, so there is not enough evidence to say that the random effects are different between any two hospitals (not really enough information to provide a ranking). We can provide a ranking based on the point estimate but there is a lot of uncertainty around this. 
 
-```{r, fig.height=3, fig.width=5}
+```{r, fig.height=3, fig.width=7}
 # plot group means 
 tmp <- model2 %>%
   spread_draws(b_Intercept, r_state[state,]) %>%
@@ -255,7 +256,8 @@ tmp %>%
        x = "Random Effect") + 
     geom_vline(aes(xintercept = 0)) +
   coord_flip() +
-  theme_bw()
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 8))
 ```
 
 Government-federal and government-state owned hospitals seems to have on average a negative effect on netincome. Non-profit church owned hospitals seems to have on average a positive effect on netincome. 
@@ -300,23 +302,24 @@ summary_pars %>%
 
 
 # alphas - top 5
-model2 %>%
+tbl1 <- model2 %>%
   spread_draws(b_Intercept, r_state[state,]) %>%
   median_qi(`Group Means` = b_Intercept + r_state) %>%
   arrange(desc(`Group Means`)) %>%
   head(5) %>%
-  select(1, 2, 3, 4) %>%
-  knitr::kable(caption = "Top 5 estimated group means of netincome by state",
-               digits = 3)
+  select(1, 2, 3, 4)
 
 # alphas - bottom 5
-model2 %>%
+tbl2 <- model2 %>%
   spread_draws(b_Intercept, r_state[state,]) %>%
   median_qi(`Group Means` = b_Intercept + r_state) %>%
   arrange(`Group Means`) %>%
   head(5) %>%
-  select(1, 2, 3, 4) %>%
-  knitr::kable(caption = "Bottom 5 estimated group means of netincome by state",
+  select(1, 2, 3, 4)
+
+bind_cols(tbl1, tbl2) %>%
+  `names<-`(rep(c("State", "Group Mean", "Lower", "Upper"), 2)) %>%
+  knitr::kable(caption = "Top (left) and bottom (right) 5 estimated group means of netincome by state",
                digits = 3)
 
 # gammas 
