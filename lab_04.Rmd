@@ -1,6 +1,10 @@
 ---
-title: "lab_04"
-author: "Aasha Reddy"
+title: "Lab 4"
+author: 
+ - Aasha Reddy
+ - Shirley Mathur
+ - Bo Liu
+ - Marc Brooks
 date: "9/17/2021"
 output:
   pdf_document: default
@@ -8,7 +12,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
 ```{r, warning = FALSE}
@@ -37,12 +41,14 @@ load("data/hc2014.RData")
 
 According to the histogram, the distribution of netincome is relatively normal (we restrict the x axis in the below graph). The distribution is somewhat right-skewed. We do not believe a log transformation of netincome is appropriate given this would eliminate all of the negative values. The QQ plot is roughly normal (in the below plot we trim off the top and bottom 5% of values). 
 
-```{r, fig.height=2, fig.width=2}
+```{r, fig.height=3, fig.width=3}
 # restrict x axis h
 ggplot(hc2014, aes(x = netincome)) + 
   geom_histogram(bins = 50) + 
-  labs(title = "Histogram of Netincome") + 
-  xlim(c(-5.175e+06, 9.295e+06))
+  labs(title = "Histogram of\nNetincome") + 
+  xlim(c(-5.175e+06, 9.295e+06)) +
+  theme(plot.title = element_text(size=15)) +
+  theme_classic()
 
 # qq plot for netincome
 hc2014 %>%
@@ -54,70 +60,96 @@ hc2014 %>%
 
 We can see below that the distribution of the mean net income by state is also relatively normal which is an assumption we care about for our model. This justifies a state specific intercept. 
 
-```{r}
+```{r, fig.height=2, fig.width=3}
+sample_state <- sample(unique(hc2014$state),10,replace=F)
 means <- hc2014 %>%
   mutate(netincome = netincome / 1000000) %>%
   filter(!is.na(hc2014$netincome)) %>%
   group_by(state) %>%
   summarize(mean_netincome = mean(netincome), n = n())
 
-knitr::kable(means, digit = 3, caption = "Mean net income (in million) and number of hospitals in each state", 
-             col.names = c("State", "Mean Net Income", "Count"))
-
 ggplot(data =  means, aes(x = mean_netincome)) + 
   geom_density() + 
-  labs(title = "Distribution of Mean netincomes by state in millions", 
-       x = "Mean Net Income")
+  labs(title = "Mean netincomes\nby state in millions", 
+       x = "Mean Net Income") + 
+  theme(plot.title = element_text(size=15)) +
+  theme_classic()
+
+
+# means %>% 
+#   filter(state %in% sample_state) %>% 
+# knitr::kable(., digit = 3, caption = "Mean net income (in million) and number of hospitals in each state", 
+#              col.names = c("State", "Mean Net Income", "Count"))
+
 ```
 
-We can also from the below boxplots that netincome varies by state, which again justifies a random intercept.  
+The boxplots below demonstrate that netincome varies by state, which again justifies a random intercept.  
 
-```{r, fig.height=12}
-ggplot(hc2014, aes(x = state, y = netincome)) + 
+```{r, fig.height=3, fig.width=9}
+plot1 <- ggplot(hc2014, aes(x = state, y = netincome)) + 
   geom_boxplot() + 
-  coord_flip() + 
   ylim(c(-5.175e+06, 9.295e+06)) + 
-  labs(title = "Distribution of netincome by state")
-```
+  labs(title = "Distribution of netincome by state") + 
+  theme_classic()
 
-We can also see that some states with smaller sample sizes have more extreme values. We decide not to disregard these potential outliers in our model. 
-
-```{r}
-hc2014 %>%
+plot2 <-  hc2014 %>%
   group_by(state) %>%
   summarize(n = n(), avg = mean(netincome, na.rm = TRUE)) %>%
-  ggplot(., aes(x = n, y = avg)) + 
-  geom_point() + 
-  labs(title = "Sample size and mean net income by state", 
-       y = "Mean net income", 
-       x = "sample size")
-  
+  ggplot(., aes(x = n, y = avg)) +
+  geom_point() +
+  labs(title = "Sample size and mean net income\nby state",
+       y = "Mean net income",
+       x = "sample size") +
+  theme_classic()
+
+plot2 + plot1
 ```
 
-We also would like to examine the relationship between netincome and the control grouping variable. The below plot suggests that control groups have a sufficient sample size (the smallest being 42 observations). As we are using random effects, it also does not matter much how large our sample sizes are since we expect shrinkage towards the mean. 
+Although the scatter plot above shows that some states with smaller sample sizes have more extreme values, we decide not to disregard these potential outliers in our model. 
 
-```{r}
-hc2014 %>%
+```{r, fig.height=3, fig.width=9}
+
+plot1 <- hc2014 %>%
   group_by(control) %>%
   summarize(n = n(), avg = mean(netincome, na.rm = TRUE)) %>%
-  ggplot(., aes(x = n, y = avg)) + 
-  geom_point() + 
-  labs(title = "Sample size by control group vs. average netincome", 
-       x = "Sample size", 
-       y = "Mean net income")
+  ggplot(., aes(x = n, y = avg)) +
+  geom_point() +
+  labs(title = "Sample size by control group\nvs. average netincome",
+       x = "Sample size",
+       y = "") +
+  theme_classic()
+
+plot2 <- ggplot(hc2014) +
+  geom_boxplot(aes(x = netincome, y = control)) +
+  xlim(c(-1e08, 1e08)) +
+  labs(title = "Boxplots of netincome by control group") +
+  theme_bw()
+
+plot1 + plot2
 ```
 
-We can see based on the below boxplots of netincome by control group that most of the groups are centered around a similar mean. For this reason, we could try to include a random intercept. 
+We also would like to examine the relationship between netincome and the control grouping variable. The plot above and on the left suggests that control groups have a sufficient sample size (the smallest being 42 observations). As we are using random effects, it also does not matter much how large our sample sizes are since we expect shrinkage towards the mean. 
 
 ```{r}
-ggplot(hc2014) + 
-  geom_boxplot(aes(x = netincome, y = control)) + 
-  xlim(c(-1e08, 1e08)) + 
-  labs(title = "Boxplots of netincome by control group")
+# hc2014 %>%
+#   group_by(control) %>%
+#   summarize(n = n(), avg = mean(netincome, na.rm = TRUE)) %>%
+#   ggplot(., aes(x = n, y = avg)) + 
+#   geom_point() + 
+#   labs(title = "Sample size by control group vs. average netincome", 
+#        x = "Sample size", 
+#        y = "Mean net income")
 ```
 
-Examining the relationship between netincome and number of beds, we see that the slope for each state is similar to the slope across all the states. This justifies a fixed effect for numbeds. 
+We can see based on the above boxplots of netincome by control group that most of the groups are centered around a similar mean. For this reason, we could try to include a random intercept. 
 
+```{r, fig.height=4, fig.width=5}
+# ggplot(hc2014) + 
+#   geom_boxplot(aes(x = netincome, y = control)) + 
+#   xlim(c(-1e08, 1e08)) + 
+#   labs(title = "Boxplots of netincome by control group") + 
+#   theme_bw()
+```
 ```{r}
 plot1 <- ggplot(hc2014, aes(x = numbeds, y = netincome)) + 
   geom_point() + 
@@ -125,10 +157,11 @@ plot1 <- ggplot(hc2014, aes(x = numbeds, y = netincome)) +
   geom_smooth(method = "lm") + 
   xlim(c(2, 2000)) + 
   ylim(c(-1e08, 5.5e08)) + 
-  labs(title = "Netincome vs. numbeds with OLS estimate for all states")
+  labs(title = "Netincome vs. numbeds\nfor all states") +
+  theme_classic()
 ```
 
-```{r}
+```{r, fig.height=3, fig.width=9}
 set.seed(99)
 plot2 <- hc2014 %>%
   filter(state %in% c("CA", "TX", "FL", "OH")) %>%
@@ -136,12 +169,21 @@ plot2 <- hc2014 %>%
   geom_point() +
   facet_wrap(~state) + 
   geom_smooth(method = "lm") + 
-  labs(title = "Netincome vs. numbeds with OLS estimate for 4 \n selected states with largest sample size") + 
+  labs(title = "Netincome vs. numbeds\nfor 4 states with largest sample size") + 
   xlim(c(2, 2000)) + 
-  ylim(c(-1e08, 5.5e08))
+  ylim(c(-1e08, 5.5e08)) +
+  theme_classic()
 
 plot1 + plot2
 ```
+
+
+Examining the relationship between netincome and number of beds, we see that the slope for each state is similar to the slope across all the states. This justifies a fixed effect for numbeds. 
+
+
+
+
+                                       
 
 
 ## Model Specification 
@@ -152,31 +194,23 @@ $$
 where $i$ indicates the hospital i, $j$ indicates the state j and k is the type of control. $B_{ij}$ is numbeds. 
 
 $$
-\alpha_j \sim \mathcal{N}(0, \tau_{\alpha}^2)
+\alpha_j \sim \mathcal{N}(0, \tau_{\alpha}^2), \hspace{.5cm} \epsilon_{ijk} \sim \mathcal{N}(0, \sigma^2), \hspace{.5cm} \gamma_k \sim \mathcal{N}(0, \tau_{\gamma}^2)
 $$
-$$
-\epsilon_{ijk} \sim \mathcal{N}(0, \sigma^2)
-$$
-$$
-\gamma_k \sim \mathcal{N}(0, \tau_{\gamma}^2)
-$$
+
 # Model Specification 
 
 We set the below priors. We selected priors that looked appropriate for our model. For the tau's, we are setting very weak priors because we know very little about variance of the random effects. For the grand mean, we assume a normal prior of N(0, 5) since the means were relatively centered around 0. From our intuition, a variance of 5 makes sense for our prior on $\mu$. 
 
 $$
 \begin{aligned}
-\mu &\sim \mathcal{N}(0, 5) \\
-\sigma^2 &\sim \mathcal{IG}(0.5, 5) \\
-\beta &\sim \mathcal{N}(0, 5) \\
-\tau_{alpha}^2 &\sim \mathcal{IG}(0.1, 0.1) \\
-\tau_{alpha}^2 &\sim \mathcal{IG}(0.1, 0.1) \\
+& \mu \sim \mathcal{N}(0, 5), \hspace{.2cm} \sigma^2 \sim \mathcal{IG}(0.5, 5), \hspace{.2cm} \beta \sim \mathcal{N}(0, 5)\\
+& \tau_{alpha}^2 \sim \mathcal{IG}(0.1, 0.1), \hspace{.2cm}\tau_{alpha}^2 \sim \mathcal{IG}(0.1, 0.1) \\
 \end{aligned}
 $$
 
 For our model, we scaled the netincome values by dividing them by 1,000,000.
 
-```{r, cache=TRUE}
+```{r, cache=TRUE, results="hide"}
 hc2014_scaled <- hc2014 %>%
   mutate(netincome = netincome / 1000000)
   
@@ -199,7 +233,7 @@ model2 <- brm(data = hc2014_scaled,
 
 We can see from the below plots that the chains seem to converge. 
 
-```{r}
+```{r, fig.height=4, fig.width=5}
 plot(model2)
 ```
 
@@ -207,7 +241,7 @@ plot(model2)
 
 For most of the states, the mean is very similar to each other. The random effects for state are relatively centered around 0. The intervals are also very similar across the states. No point estimates are outside of the other state intervals, so there is not enough evidence to say that the random effects are different between any two hospitals (not really enough information to provide a ranking). We can provide a ranking based on the point estimate but there is a lot of uncertainty around this. 
 
-```{r, fig.height=12}
+```{r, fig.height=3, fig.width=5}
 # plot group means 
 tmp <- model2 %>%
   spread_draws(b_Intercept, r_state[state,]) %>%
@@ -217,16 +251,18 @@ sorted_state_names <- tmp %>%
 tmp %>%
   ggplot(aes(y = factor(state, levels = sorted_state_names), 
              x = `Group Means`, xmin = .lower, xmax = .upper)) +
-  geom_pointinterval(orientation = "horizontal") + 
+  geom_pointinterval(orientation = "horizontal", fatten_point = .8) + 
   labs(title = "Random effect of netincomes State", 
        y = "State", 
        x = "Random Effect") + 
-    geom_vline(aes(xintercept = 0))
+    geom_vline(aes(xintercept = 0)) +
+  coord_flip() +
+  theme_bw()
 ```
 
-Government-federal and government-state owned hospitals seems to have on average a negative effect on netincome.   Non-profit church owned hospitals seems to have on average a positive effect on netincome. 
+Government-federal and government-state owned hospitals seems to have on average a negative effect on netincome. Non-profit church owned hospitals seems to have on average a positive effect on netincome. 
 
-```{r}
+```{r, fig.height=3, fig.width=4}
 # plot group means 
 tmp <- model2 %>%
   spread_draws(b_Intercept, r_control[control,]) %>%
@@ -237,10 +273,11 @@ tmp %>%
   ggplot(aes(y = factor(control, levels = sorted_state_names), 
              x = `Group Means`, xmin = .lower, xmax = .upper)) +
   geom_pointinterval(orientation = "horizontal") + 
-  labs(title = "Random effect of netincomes Control", 
+  labs(title = "Random effect\nof netincomes Control", 
        y = "Control", 
        x = "Random Effect") + 
-  geom_vline(aes(xintercept = 0))
+  geom_vline(aes(xintercept = 0)) +
+  theme_bw()
 ```
 
 Below are our estimates of the parameters, including the 95% credible intervals. We can see that our estimate of $\mu$, the grand mean is -11.321 million (credible interval of [-18.885, -4.311]). This suggests that the hospitals at baseline (no beds) are expected to on average lose money. 
@@ -265,11 +302,13 @@ summary_pars %>%
 
 
 # alphas 
+sample_state <- sample(unique(hc2014$state),10,replace=F)
 model2 %>%
   spread_draws(b_Intercept, r_state[state,]) %>%
   median_qi(`Group Means` = b_Intercept + r_state) %>%
   select(1, 2, 3, 4) %>%
-  knitr::kable(caption = "Estimated group means of netincome by state",
+  filter(state %in% sample_state) %>% 
+  knitr::kable(caption = "Estimated group means of netincome by state (10 randomly selected)",
                digits = 3)
 
 # gammas 
