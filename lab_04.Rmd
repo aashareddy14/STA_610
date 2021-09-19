@@ -74,13 +74,6 @@ ggplot(data =  means, aes(x = mean_netincome)) +
        x = "Mean Net Income") + 
   theme(plot.title = element_text(size=15)) +
   theme_classic()
-
-
-# means %>% 
-#   filter(state %in% sample_state) %>% 
-# knitr::kable(., digit = 3, caption = "Mean net income (in million) and number of hospitals in each state", 
-#              col.names = c("State", "Mean Net Income", "Count"))
-
 ```
 
 The boxplots below demonstrate that netincome varies by state, which again justifies a random intercept.  
@@ -131,26 +124,8 @@ plot1 + plot2
 
 We also would like to examine the relationship between netincome and the control grouping variable. The plot above and on the left suggests that control groups have a sufficient sample size (the smallest being 42 observations). As we are using random effects, it also does not matter much how large our sample sizes are since we expect shrinkage towards the mean. 
 
-```{r}
-# hc2014 %>%
-#   group_by(control) %>%
-#   summarize(n = n(), avg = mean(netincome, na.rm = TRUE)) %>%
-#   ggplot(., aes(x = n, y = avg)) + 
-#   geom_point() + 
-#   labs(title = "Sample size by control group vs. average netincome", 
-#        x = "Sample size", 
-#        y = "Mean net income")
-```
-
 We can see based on the above boxplots of netincome by control group that most of the groups are centered around a similar mean. For this reason, we could try to include a random intercept. 
 
-```{r, fig.height=4, fig.width=5}
-# ggplot(hc2014) + 
-#   geom_boxplot(aes(x = netincome, y = control)) + 
-#   xlim(c(-1e08, 1e08)) + 
-#   labs(title = "Boxplots of netincome by control group") + 
-#   theme_bw()
-```
 ```{r}
 plot1 <- ggplot(hc2014, aes(x = numbeds, y = netincome)) + 
   geom_point() + 
