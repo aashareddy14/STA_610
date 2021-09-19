@@ -186,7 +186,7 @@ Examining the relationship between netincome and number of beds, we see that the
                                        
 
 
-## Model Specification 
+# Model Specification 
 
 $$
 y_{ijk} = \mu + \alpha_j + \gamma_k  + \beta * B_{ij} + \epsilon_{ijk}
@@ -196,8 +196,6 @@ where $i$ indicates the hospital i, $j$ indicates the state j and k is the type 
 $$
 \alpha_j \sim \mathcal{N}(0, \tau_{\alpha}^2), \hspace{.5cm} \epsilon_{ijk} \sim \mathcal{N}(0, \sigma^2), \hspace{.5cm} \gamma_k \sim \mathcal{N}(0, \tau_{\gamma}^2)
 $$
-
-# Model Specification 
 
 We set the below priors. We selected priors that looked appropriate for our model. For the tau's, we are setting very weak priors because we know very little about variance of the random effects. For the grand mean, we assume a normal prior of N(0, 5) since the means were relatively centered around 0. From our intuition, a variance of 5 makes sense for our prior on $\mu$. 
 
@@ -301,22 +299,33 @@ summary_pars %>%
                digits = 3)
 
 
-# alphas 
-sample_state <- sample(unique(hc2014$state),10,replace=F)
+# alphas - top 5
 model2 %>%
   spread_draws(b_Intercept, r_state[state,]) %>%
   median_qi(`Group Means` = b_Intercept + r_state) %>%
+  arrange(`Group Means`) %>%
+  head(5) %>%
   select(1, 2, 3, 4) %>%
-  filter(state %in% sample_state) %>% 
-  knitr::kable(caption = "Estimated group means of netincome by state (10 randomly selected)",
+  knitr::kable(caption = "Top 5 estimated group means of netincome by state",
                digits = 3)
+
+# alphas - bottom 5
+model2 %>%
+  spread_draws(b_Intercept, r_state[state,]) %>%
+  median_qi(`Group Means` = b_Intercept + r_state) %>%
+  arrange(desc(`Group Means`)) %>%
+  head(5) %>%
+  select(1, 2, 3, 4) %>%
+  knitr::kable(caption = "Top 5 estimated group means of netincome by state",
+               digits = 3)
+
 
 # gammas 
 model2 %>%
   spread_draws(b_Intercept, r_control[control,]) %>%
   median_qi(`Group Means` = b_Intercept + r_control) %>%
   select(1, 2, 3, 4) %>%
-  knitr::kable(caption = "Estimated group means of netincome by control", 
+  knitr::kable(caption = "Bottom 5 estimated group means of netincome by control", 
                digits = 3)
   
 ```
