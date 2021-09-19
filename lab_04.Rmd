@@ -303,7 +303,7 @@ summary_pars %>%
 model2 %>%
   spread_draws(b_Intercept, r_state[state,]) %>%
   median_qi(`Group Means` = b_Intercept + r_state) %>%
-  arrange(`Group Means`) %>%
+  arrange(desc(`Group Means`)) %>%
   head(5) %>%
   select(1, 2, 3, 4) %>%
   knitr::kable(caption = "Top 5 estimated group means of netincome by state",
@@ -313,19 +313,19 @@ model2 %>%
 model2 %>%
   spread_draws(b_Intercept, r_state[state,]) %>%
   median_qi(`Group Means` = b_Intercept + r_state) %>%
-  arrange(desc(`Group Means`)) %>%
+  arrange(`Group Means`) %>%
   head(5) %>%
   select(1, 2, 3, 4) %>%
-  knitr::kable(caption = "Top 5 estimated group means of netincome by state",
+  knitr::kable(caption = "Bottom 5 estimated group means of netincome by state",
                digits = 3)
-
 
 # gammas 
 model2 %>%
   spread_draws(b_Intercept, r_control[control,]) %>%
   median_qi(`Group Means` = b_Intercept + r_control) %>%
+  arrange(desc(`Group Means`)) %>%
   select(1, 2, 3, 4) %>%
-  knitr::kable(caption = "Bottom 5 estimated group means of netincome by control", 
+  knitr::kable(caption = "Estimated group means of netincome by control", 
                digits = 3)
   
 ```
