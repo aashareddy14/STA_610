@@ -102,15 +102,22 @@ streetrx <- streetrx %>%
          )
 ```
 
-We next examine the distribution of our outcome variable, ppm (price per mg). We can see that ppm spans a large range of values, from \$0.00025/mg to \$40/mg.
+We next examine the distribution of our outcome variable, ppm (price per mg). We can see that ppm spans a large range of values, from \$0.00025/mg to \$40/mg. There are only 16 observations with a ppm > 10, and 3 with a ppm > 20. 
 
 ```{r}
 ggplot(data = streetrx, aes(x = ppm)) + 
-  geom_histogram(color = "white") + 
+  geom_histogram(color = "white", bins = 50) + 
   labs(y = "", 
-       title = "Distribution of price per mg (ppm) of Methadone")
+       title = "Distribution of price per mg (ppm) \nof Methadone")
+```
 
-
+```{r}
+streetrx %>%
+  filter(ppm < 10) %>%
+ggplot(data = ., aes(x = ppm)) + 
+  geom_histogram(color = "white", bins = 50) + 
+  labs(y = "", 
+       title = "Distribution of price per mg (ppm) < 10 \nof Methadone")
 ```
 
 # Check for outliers
