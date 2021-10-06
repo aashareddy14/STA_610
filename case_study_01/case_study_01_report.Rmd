@@ -1,0 +1,10 @@
+---
+title: "Case Study 1"
+author: "Marc Brooks, Bo Liu, Shirley Mathur, Aasha Reddy"
+date: "10/6/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
