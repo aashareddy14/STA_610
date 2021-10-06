@@ -16,6 +16,7 @@ library(rstan)
 library(brms)
 library(knitr)
 library(kableExtra)
+library(lubridate)
 ```
 
 
@@ -36,6 +37,10 @@ Prescription opioid diversion and abuse are major public health issues, and stre
 StreetRx (streetrx.com) is a web-based citizen reporting tool enabling real-time collection of street price data on diverted pharmaceutical substances. Based on principles of crowdsourcing for public health surveillance, the site allows users to anonymously report prices they paid or heard were paid for diverted prescription drugs. User-generated data offers intelligence into an otherwise opaque black market, providing a novel data set for public health surveillance, specifically for controlled substances.
 
 Our goal is to investigate factors related to the price per mg of Methadone, accounting for potential clustering by location and exploring heterogeneity in pricing by location. Our data contains the following factors, and we will explore how the factors in the dataset are or are not associated with pricing per milligram. 
+
+## Questions:
+* Which variables are associated with pricing per milligram of Methadone? 
+* Is there heterogeneity in pricing of Methadone by location? 
 
 ```{r}
 # variable description table
@@ -67,20 +72,48 @@ Description = c("Price per mg (outcome of interest)",
 
 # Exploratory Analysis and Cleaning
 
-We first examine missing data in the streetrx data. We impute NA for all missing values. 
+We first examine missing data in the streetrx data. We impute NA for all missing values. We see that some variables, such as ppm, city, source, mgstr and primary_reason have many missing values. For the purpose of our model, we will not use the source or primary_reason variable, as they contain the most missing observations. Source contains links to websites where individuals purchased the Methadone, which will not be helpful in the model. 
+
+We also note that individuals self-report their city, state, and country, so there are some data entry errors. For instance, some observations report purchased in "New York" vs. "New York Manhattan" vs. "New York City", which all refer to the same city. Thus, this variable may not be reliable as a grouping variable to explore heterogeneity within location. This is not an issue with State, so we choose to use state as our grouping variable. We also note that all purchases were made in the USA. 
 
 ```{r}
 # code missing data
 streetrx <- data.frame(apply(streetrx, 2, function(x) gsub("^$|^ $", NA, x)))
 
-# examine variables with missing data
-
-  
+# table of variables with missing data
 tibble(Variable = names(streetrx), `Number Missing` = apply(streetrx, 2, function(x) sum(is.na(x)))) %>%
   kbl(caption = "Number of observations missing per variable",
     position = 'HOLD')
+
+# code factors and numeric variables 
+streetrx <- streetrx %>%
+  mutate(ppm = as.numeric(ppm), 
+         yq_pdate = as.numeric(yq_pdate),
+         price_date = mdy(price_date),
+         city = as.factor(city), 
+         state = as.factor(state),
+         country = as.factor(country),
+         USA_region = as.factor(USA_region),
+         source = as.factor(source),
+         form_temp = as.factor(form_temp),
+         mgstr = as.numeric(mgstr),
+         bulk_purchase = as.factor(bulk_purchase),
+         Primary_Reason = as.factor(Primary_Reason)
+         )
 ```
 
+We next examine the distribution of our outcome variable, ppm (price per mg). We can see that ppm spans a large range of values, from \$0.00025/mg to \$40/mg.
+
+```{r}
+ggplot(data = streetrx, aes(x = ppm)) + 
+  geom_histogram(color = "white") + 
+  labs(y = "", 
+       title = "Distribution of price per mg (ppm) of Methadone")
+
+
+```
+
+# Check for outliers
 
 # Outline of things to do?
 ** Discuss questions for Michael at OH tomorrow
@@ -91,7 +124,8 @@ tibble(Variable = names(streetrx), `Number Missing` = apply(streetrx, 2, functio
 5) conclusion 
 
 
-# Questions for Michael
+# Questions 
 * Do we have to use all variables in our model? For instance, source and primary reason do not seem helpful 
 * How should we incorporate the time aspect? Can we choose to not use these variables?
-
+* Should we choose our grouping variable to be state, since city has a lot of missing data?
+* We should consider outliers for ppm - what is an outlier?
