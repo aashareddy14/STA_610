@@ -8,3 +8,90 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 ```
+
+```{r}
+library(tidyverse)
+library(lme4)
+library(rstan)
+library(brms)
+library(knitr)
+library(kableExtra)
+```
+
+
+```{r}
+#load data
+load("case_study_01/streetrx.RData")
+
+# GROUP 1 - METHADONE
+# filter data for only methadone
+streetrx <- streetrx %>%
+  filter(api_temp == "methadone")
+```
+
+# Introduction, Data and Research Questions
+
+Prescription opioid diversion and abuse are major public health issues, and street prices provide an indicator of drug availability, demand, and abuse potential. Using StreetRx data, we aim to investigate factors related to the price per mg of Methadone. 
+
+StreetRx (streetrx.com) is a web-based citizen reporting tool enabling real-time collection of street price data on diverted pharmaceutical substances. Based on principles of crowdsourcing for public health surveillance, the site allows users to anonymously report prices they paid or heard were paid for diverted prescription drugs. User-generated data offers intelligence into an otherwise opaque black market, providing a novel data set for public health surveillance, specifically for controlled substances.
+
+Our goal is to investigate factors related to the price per mg of Methadone, accounting for potential clustering by location and exploring heterogeneity in pricing by location. Our data contains the following factors, and we will explore how the factors in the dataset are or are not associated with pricing per milligram. 
+
+```{r}
+# variable description table
+tibble(Variable = names(streetrx),
+Description = c("Price per mg (outcome of interest)",
+                "	Year and quarter drug was purchased",
+                "Date of the reported purchase
+",
+                "city purchased",
+                "state purchased",
+"country purchased",
+"northeast, midwest, west, south, or other/unknown
+",
+"source of information",
+"active ingredient of drug of interest, in our case Methadone)
+",
+"formulation of the drug (e.g., pill, patch, suppository)
+",
+"dosage strength in mg of the units purchased
+",
+"indicator for purchase of 10+ units at once
+",
+"primary reason for purchase"
+)) %>%
+  kbl(caption = "Variable Descriptions", 
+      position = "HOLD")
+```
+
+
+# Exploratory Analysis and Cleaning
+
+We first examine missing data in the streetrx data. We impute NA for all missing values. 
+
+```{r}
+# code missing data
+streetrx <- data.frame(apply(streetrx, 2, function(x) gsub("^$|^ $", NA, x)))
+
+# examine variables with missing data
+
+  
+tibble(Variable = names(streetrx), `Number Missing` = apply(streetrx, 2, function(x) sum(is.na(x)))) %>%
+  kbl(caption = "Number of observations missing per variable",
+    position = 'HOLD')
+```
+
+
+# Outline of things to do?
+** Discuss questions for Michael at OH tomorrow
+1) EDA/transformations/outliers
+2) Build frequentist model
+3) Model/variable selection/testing
+4) Bayesian model?
+5) conclusion 
+
+
+# Questions for Michael
+* Do we have to use all variables in our model? For instance, source and primary reason do not seem helpful 
+* How should we incorporate the time aspect? Can we choose to not use these variables?
+
