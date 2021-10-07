@@ -9,6 +9,39 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
+
+To do:
+
+Data cleaning
+* Delete levels of mgstr that are not 5, 10, 40
+* Delete year = 1969 
+* Don't use missing data - ignore
+* combine source into internet (categorical)
+
+
+EDA:
+* boxplot for source 
+* check for interactions
+* (wait until after presetnation) check for random slopes using EDA - choose 5 random states
+
+Modeling:
+* Don't use city 
+* Group by state - log of ppm distribution is very similar across regions. Compare across region variances to within region variances - if it within is smaller means are more liekly to be the same. 
+* use stepwise selection with BIC - start with base model and add covariates one by one. Exhaustive search (16)
+* start with base model of only random intercepts (don't think about random slopes until after presetnation)
+* primary_reason drop this variable - make a boxplot to see if log ppm distribution is different for price. From Mark's plot it doesn't look like they are different, so we can probably exclude this variable. Bo may explore this further - mention that if we had more time we could look into this more. 
+* time - seasonality. Use quarter as a categorical variable. Maybe there is not a strong seasonal affect (looking at the boxplot). 
+* use year as numerical variable (continuous) to account for potential inflation. 
+* mgstr - include as a categorical 
+* bulk purchase - we will include
+* variables to include - log(ppm) ~ (1|state) + year + mgstr + bulk_purchase + source 
+* check 2 models - check with 2004 and 2000 and then without these years and see how much it changes
+
+
+
+
+
+
 ```{r}
 library(tidyverse)
 library(lme4)
@@ -79,7 +112,7 @@ Description = c("Price per mg (outcome of interest)",
 
 # Exploratory Analysis and Cleaning
 
-We first examine missing data in the streetrx data. We impute NA for all missing values. We see that some variables, such as ppm, city, source, mgstr and primary_reason have many missing values. For the purpose of our model, we will not use the source or primary_reason variable, as they contain the most missing observations. Source contains links to websites where individuals purchased the Methadone, which will not be helpful in the model. 
+We first examine missing data in the streetrx data. We substitute NA for all missing values. We see that some variables, such as ppm, city, source, mgstr and primary_reason have many missing values. For the purpose of our model, we will not use the source or primary_reason variable, as they contain the most missing observations. Source contains links to websites where individuals purchased the Methadone, which will not be helpful in the model. 
 
 We also note that individuals self-report their city, state, and country, so there are some data entry errors. For instance, some observations report purchased in "New York" vs. "New York Manhattan" vs. "New York City", which all refer to the same city. Thus, this variable may not be reliable as a grouping variable to explore heterogeneity within location. This is not an issue with State, so we choose to use state as our grouping variable. We also note that all purchases were made in the USA. 
 
@@ -132,6 +165,7 @@ ggplot(data = ., aes(x = ppm)) +
 ```
 
 # Check for outliers
+
 
 # Outline of things to do?
 ** Discuss questions for Michael at OH tomorrow
@@ -356,10 +390,10 @@ ggplot(streetrx) +
 
 2) Base model
 
-Region: $r$. State: $s$. 
-$$y_{isr} = \mu + \alpha_{sr} + \alpha_{r} + \epsilon_{ij}.$$
+State: $s$. 
+$$y_{isr} = \mu + \alpha_{sr} + \epsilon_{ij}.$$
 
-Why include both regional level and state level random intercepts?
+See how much heterogeniety.
 
 *May compare the fitted variance of regional level means and state level means. If regional level means have larger variance, it might indicate a clustering effect within regions.*
 
