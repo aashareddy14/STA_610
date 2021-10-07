@@ -12,19 +12,19 @@ knitr::opts_chunk$set(echo = FALSE)
 
 To do:
 
-Data cleaning
+Data cleaning (Shirley)
 * Delete levels of mgstr that are not 5, 10, 40
 * Delete year = 1969 
 * Don't use missing data - ignore
 * combine source into internet (categorical)
 
 
-EDA:
+EDA (Marc)
 * boxplot for source 
 * check for interactions
 * (wait until after presetnation) check for random slopes using EDA - choose 5 random states
 
-Modeling:
+Modeling (Bo)
 * Don't use city 
 * Group by state - log of ppm distribution is very similar across regions. Compare across region variances to within region variances - if it within is smaller means are more liekly to be the same. 
 * use stepwise selection with BIC - start with base model and add covariates one by one. Exhaustive search (16)
@@ -37,9 +37,7 @@ Modeling:
 * variables to include - log(ppm) ~ (1|state) + year + mgstr + bulk_purchase + source 
 * check 2 models - check with 2004 and 2000 and then without these years and see how much it changes
 
-
-
-
+Slides (Aasha)
 
 
 ```{r}
