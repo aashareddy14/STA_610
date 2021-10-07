@@ -17,12 +17,19 @@ library(brms)
 library(knitr)
 library(kableExtra)
 library(lubridate)
+library(gridExtra)
+
+options(scipen = 0, digits = 4)
+ggplot2::theme_set(ggplot2::theme_bw())
+knitr::opts_chunk$set(
+  fig.align = 'center', fig.width=5, fig.height=3, echo = FALSE
+)
 ```
 
 
 ```{r}
 #load data
-load("case_study_01/streetrx.RData")
+load("streetrx.RData")
 
 # GROUP 1 - METHADONE
 # filter data for only methadone
@@ -81,7 +88,11 @@ We also note that individuals self-report their city, state, and country, so the
 streetrx <- data.frame(apply(streetrx, 2, function(x) gsub("^$|^ $", NA, x)))
 
 # table of variables with missing data
-tibble(Variable = names(streetrx), `Number Missing` = apply(streetrx, 2, function(x) sum(is.na(x)))) %>%
+tibble(
+  Variable = names(streetrx), 
+  `Number Missing` = apply(streetrx, 2, function(x) sum(is.na(x))),
+  `Proportion Missing` = apply(streetrx, 2, function(x) mean(is.na(x)))
+) %>%
   kbl(caption = "Number of observations missing per variable",
     position = 'HOLD')
 
@@ -136,3 +147,224 @@ ggplot(data = ., aes(x = ppm)) +
 * How should we incorporate the time aspect? Can we choose to not use these variables?
 * Should we choose our grouping variable to be state, since city has a lot of missing data?
 * We should consider outliers for ppm - what is an outlier?
+
+---------------------
+Added by Bo
+
+1. Missing Values.
+
+Five variables have missing values - `ppm`, `mgstr`, `city`, `source` and `Primary_Reason`.
+
+Observations: 
+- `Primary_Reason` has almost 50\% missing data.
+- `source` and `city` has medium proportion of missing data.
+- `ppm` and `mgstr` are missing at the same time.
+
+What to do with these missing values?
+- `Primary_Reason`: maybe can combine to several categories.
+- `ppm` (12.65\%): outcome variable. Would hurt if the imputation is not reliable. **Suggestion: 1) discard missing observations - assume MCAR; 2) MI w/ sensitivity analysis; 3) test MI reliability first.**
+- `source` (37.61\%): maybe try categorical - `Personal`, `Internet`, `Heard`, `Other`.
+- `city` (33.24\%): basically can do nothing - delete.
+- `mgstr` (12.65\%): depend on how you treat `ppm`. If missing data in `ppm` are discarded, then there are no missingness in `mgstr`.
+
+2. Distribution of Variables
+
+1) outcome: `ppm`
+
+```{r}
+ppm_hist1 <- streetrx %>%
+  ggplot(aes(x = ppm, y = ..density..)) +
+  geom_histogram(bins = 30, alpha = 0.4) +
+  geom_density(color = "navyblue", adjust = 5)
+
+ppm_hist2 <- streetrx %>%
+  ggplot(aes(x = log(ppm), y = ..density..)) +
+  geom_density(color = "navyblue", adjust = 5) +
+  geom_histogram(bins = 30, alpha = 0.4)
+  
+grid.arrange(ppm_hist1, ppm_hist2, ncol=2)
+```
+
+2) `mgstr`
+
+```{r}
+mgstr_hist1 <- streetrx %>%
+  ggplot(aes(x = mgstr, y = ..density..)) +
+  geom_density(color = "navyblue", adjust = 1) + 
+  geom_histogram(bins = 30, alpha = 0.4)
+
+mgstr_hist2 <- streetrx %>%
+  ggplot(aes(x = log(mgstr), y = ..density..)) +
+  geom_density(color = "navyblue", adjust = 1) +
+  geom_histogram(bins = 30, alpha = 0.4)
+  
+grid.arrange(mgstr_hist1, mgstr_hist2, ncol=2)
+```
+
+Only three main levels of `mgstr`: 5mg, 10mg and 40mg.
+
+```{r}
+streetrx %>% 
+  filter(!is.na(mgstr)) %>%
+  filter(!mgstr %in% c(5, 10, 40)) %>% 
+  pull(mgstr)
+```
+
+3) Dates
+
+```{r}
+streetrx %>% 
+  mutate(
+    year = yq_pdate %/% 10, 
+    quarter = yq_pdate %% 10
+  ) %>%
+  group_by(year) %>% 
+  summarize(n = n())
+```
+
+1969 seems to be erroneous.
+
+```{r}
+streetrx %>%
+  filter(year(price_date) != yq_pdate %/% 10)
+```
+
+```{r}
+streetrx %>%
+  filter((month(price_date) - 1) %/% 3 != yq_pdate %% 10 - 1)
+```
+
+Two dates are consistent.
+
+4) Geographical information
+
+```{r}
+streetrx %>% group_by(USA_region) %>% summarize(n = n())
+```
+
+```{r}
+streetrx %>% 
+  group_by(state) %>% 
+  summarize(n = n()) %>% 
+  arrange(desc(n))
+```
+
+Some states have very few observations - might be more stable to use a hierarchical model. **Think of whether to use regional information (another level of hierarchy)**
+
+5) `form_temp`
+
+```{r}
+streetrx %>% group_by(form_temp) %>% summarize(n = n())
+```
+
+```{r}
+streetrx %>% group_by(form_temp, is.na(mgstr)) %>% summarize(n = n())
+```
+
+**All syrup/liquid rows do not have `mgstr` values. Basically we do not have any outcome data for syrup/liquid drugs.**
+
+6) `bulk_purchase`
+
+```{r}
+streetrx %>% group_by(bulk_purchase) %>% summarize(n = n())
+```
+
+3. Association with outcome `ppm`
+
+1) `mgstr`
+
+```{r}
+ggplot(streetrx) +
+  geom_point(aes(x = mgstr, y = log(ppm))) +
+  geom_point(aes(x = mgstr, y = mean),
+             data = streetrx %>% 
+               group_by(mgstr) %>% 
+               summarize(mean = mean(log(ppm))),
+             color = "red"
+)
+```
+
+Seems that there is a slight association.
+
+```{r}
+cor(streetrx$ppm, streetrx$mgstr, use = "complete.obs")
+```
+
+2) Dates
+
+```{r}
+streetrx %>% mutate(quarter = yq_pdate %% 10) %>%
+  ggplot() + 
+  geom_boxplot(aes(x = quarter, y = log(ppm), group = quarter))
+```
+
+```{r}
+streetrx %>% filter(yq_pdate >= 20000) %>%
+  mutate(year = yq_pdate %/% 10) %>%
+  ggplot() + 
+  geom_boxplot(aes(x = year, y = log(ppm), group = year))
+```
+
+```{r}
+streetrx %>% 
+  filter(yq_pdate >= 20000) %>%
+  mutate(days = difftime(price_date, '2000-01-01', units = "days")) %>%
+  ggplot() +
+  geom_point(aes(x = days, y = log(ppm)))
+```
+
+```{r}
+streetrx %>% 
+  filter(yq_pdate >= 20090) %>%
+  mutate(days = difftime(price_date, '2000-01-01', units = "days")) %>%
+  ggplot() +
+  geom_point(aes(x = days, y = log(ppm)))
+```
+
+3) Geographical information
+
+```{r}
+ggplot(streetrx) +
+  geom_boxplot(aes(x = USA_region, y = log(ppm)))
+```
+
+```{r}
+ggplot(streetrx) +
+  geom_boxplot(aes(x = state, y = log(ppm)))
+```
+
+4) `bulk_purchase`
+
+```{r}
+ggplot(streetrx) + 
+  geom_boxplot(aes(x = bulk_purchase, y = log(ppm)))
+```
+
+5) `source` and `Primary_Reason`
+
+**Depend on how we discuss to deal with these variables.**
+
+4. Model
+
+**I do not have much information about what the best model should be, given that we are still in early EDA. Nevertheless, a priori I have some preference on what to use / what not to use.**
+
+1) Grouping variable
+
+- `USA_region` and `state` are natural grouping variables - and required for the analysis purpose.
+- Grouping on binary variables is equivalent to a random slope for it. If we decide to put a random slope on a binary variable, we should put it as a grouping variable for ease to interpret.
+- Other categorical variables are subject on how many levels we keep.
+
+2) Base model
+
+Region: $r$. State: $s$. 
+$$y_{isr} = \mu + \alpha_{sr} + \alpha_{r} + \epsilon_{ij}.$$
+
+Why include both regional level and state level random intercepts?
+
+*May compare the fitted variance of regional level means and state level means. If regional level means have larger variance, it might indicate a clustering effect within regions.*
+
+3) Adding predictors
+
+Criterion: BIC(?) for Bayesian predictor selection.
+
+Order: step-wise forward? May not find the optimum. Think of a good way to find a decent model.
