@@ -402,7 +402,157 @@ ggplot(streetrx) +
 
 **Depend on how we discuss to deal with these variables.**
 
-4. Model
+4. Detecting Interaction Effects
+
+1.) `bulk_purchase` and `mgstr`
+
+The following boxplot does reveal some slight variance in the effect of `bulk_purchace` 
+on `log(ppm)` across values of `mgstr`.
+
+```{r}
+ggplot(streetrx) + 
+  geom_boxplot(aes(x = bulk_purchase, y = log(ppm))) +
+  facet_wrap(~mgstr)
+```
+2.) `source` and `mgstr`
+
+The following boxplot does reveal some slight variance in the effect of `source` 
+on `log(ppm)` across different values of `mgstr`, though some of this effect 
+could be distorted by lack of observations within certain categories.
+
+```{r}
+ggplot(streetrx) + 
+  geom_boxplot(aes(x = source, y = log(ppm))) +
+  facet_wrap(~mgstr)
+```
+3.) `source` and `bulk_purchase`
+
+The follow boxplot does not show substantial evidence that the relationship
+between log(ppm) and bulk_purchace varies across source.
+
+```{r}
+ggplot(streetrx) + 
+  geom_boxplot(aes(x = bulk_purchase, y = log(ppm))) +
+  facet_wrap(~source)
+```
+
+4.) `bulk_purchase` and `quarter`
+
+From the boxplot it appears that the relationship between quarter and log(ppm) 
+changes slightly for different values of bulk_purchase.
+
+```{r}
+streetrx %>%
+  mutate(quarter = yq_pdate %% 10) %>%
+  ggplot(aes(x = as.factor(quarter), y = log(ppm))) +
+  geom_boxplot() +
+  facet_wrap(~ bulk_purchase)
+```
+
+5.) `mgstr` and `quarter`
+
+There is some evidence that the effect of quarter on log(ppm) changes with the 
+dosage unit.
+
+```{r}
+streetrx %>%
+  mutate(quarter = yq_pdate %% 10) %>%
+  ggplot(aes(x = as.factor(quarter), y = log(ppm))) +
+  geom_boxplot() +
+  facet_wrap(~ mgstr)
+```
+
+6.) `source` and `quarter`
+
+We do not see strong evidence that the relationship between quarter and log(ppm) 
+changes across source.
+
+```{r}
+streetrx %>%
+  mutate(quarter = yq_pdate %% 10) %>%
+  ggplot(aes(x = as.factor(quarter), y = log(ppm))) +
+  geom_boxplot() +
+  facet_wrap(~ source)
+```
+
+7.) Interactions between factor variables and year
+
+7.1) `mgstr`
+
+There is not strong evidence that `mgstr` effects the relationship between `year`
+and `log(ppm)`.
+
+```{r}
+streetrx %>% 
+  mutate(year = yq_pdate %/% 10) %>% 
+  ggplot(aes(x=year, y = log(ppm)))  +
+  geom_point() +
+  facet_wrap(~mgstr) + 
+  geom_smooth(method = "lm")  
+```
+
+```{r}
+streetrx %>% 
+  mutate(year = yq_pdate %/% 10) %>% 
+  filter(year > 2005) %>% 
+  ggplot(aes(x=year, y = log(ppm)))  +
+  geom_point() +
+  facet_wrap(~mgstr) + 
+  geom_smooth(method = "lm")  
+```
+7.2) `bulk_purchase`
+There is not strong evidence that `bulk_purchase` effects the relationship between `year`
+and `log(ppm)`.
+```{r}
+streetrx %>% 
+  mutate(year = yq_pdate %/% 10) %>% 
+  ggplot(aes(x=year, y = log(ppm)))  +
+  geom_point() +
+  facet_wrap(~bulk_purchase) + 
+  geom_smooth(method = "lm")  
+```
+
+
+```{r}
+streetrx %>% 
+  mutate(year = yq_pdate %/% 10) %>% 
+  filter(year > 2005) %>% 
+  ggplot(aes(x=year, y = log(ppm)))  +
+  geom_point() +
+  facet_wrap(~bulk_purchase) + 
+  geom_smooth(method = "lm")  
+```
+7.3) `source`
+There is not strong evidence that `source` effects the relationship between `year`
+and `log(ppm)`.
+```{r}
+streetrx %>% 
+  mutate(year = yq_pdate %/% 10) %>% 
+  ggplot(aes(x=year, y = log(ppm)))  +
+  geom_point() +
+  facet_wrap(~source) + 
+  geom_smooth(method = "lm")  
+```
+
+
+```{r}
+streetrx %>% 
+  mutate(year = yq_pdate %/% 10) %>% 
+  filter(year > 2005) %>% 
+  ggplot(aes(x=year, y = log(ppm)))  +
+  geom_point() +
+  facet_wrap(~source) + 
+  geom_smooth(method = "lm")  
+```
+
+Outside of `mgstr` and `quarter`,  `bulk_purchase` and `quarter`, `source` and,
+and `mgstr` `bulk_purchase` and `mgstr` there was not strong evidence for other 
+interaction effects. Even for those listed above the evidence was not substantial 
+in our EDA, and some of the variation is likely due to a lack of observations
+for certain interaction terms.
+
+
+5. Model
 
 **I do not have much information about what the best model should be, given that we are still in early EDA. Nevertheless, a priori I have some preference on what to use / what not to use.**
 
