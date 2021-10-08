@@ -142,6 +142,32 @@ streetrx <- streetrx %>%
          bulk_purchase = as.factor(bulk_purchase),
          Primary_Reason = as.factor(Primary_Reason)
          )
+
+# delete observations with missing ppm data
+streetrx <- streetrx %>%
+  filter(!is.na(ppm))
+
+# delete levels of mgstr that are not 5, 10, 40
+streetrx <- streetrx %>%
+  filter(mgstr %in% c(5,10,40))
+
+# delete year of 1969 as it is likely an error
+streetrx <- streetrx %>%
+  filter(yq_pdate %/% 10 != 1969)
+
+#combine all website sources as being Internet source
+streetrx <- streetrx %>%
+  mutate(source = as.character(source)) %>%
+  mutate(source = if_else(str_detect(source, "http://"), "Internet", source)) %>%
+  mutate(source = if_else(str_detect(source, ".com$"), "Internet", source)) %>%
+  mutate(source = if_else(source == "Streetrx", "Internet",source)) %>%
+  mutate(source = if_else(source ==  "Poopy,", "N/A", source)) %>%
+  mutate(source = if_else(source == "google", "Internet", source)) %>%
+  mutate(source = if_else(source == "Internet Pharmacy", "Internet", source)) %>%
+  mutate(source = na_if(source, "N/A")) %>%
+  mutate(source = na_if(source, "None")) %>%
+  mutate(source = as.factor(source))
+
 ```
 
 We next examine the distribution of our outcome variable, ppm (price per mg). We can see that ppm spans a large range of values, from \$0.00025/mg to \$40/mg. There are only 16 observations with a ppm > 10, and 3 with a ppm > 20. 
