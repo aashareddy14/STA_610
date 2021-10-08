@@ -143,6 +143,10 @@ streetrx <- streetrx %>%
          Primary_Reason = as.factor(Primary_Reason)
          )
 
+# add year
+streetrx <- streetrx %>%
+  mutate(year = year(price_date))
+
 # delete observations with missing ppm data
 streetrx <- streetrx %>%
   filter(!is.na(ppm))
@@ -153,7 +157,7 @@ streetrx <- streetrx %>%
 
 # delete year of 1969 as it is likely an error
 streetrx <- streetrx %>%
-  filter(yq_pdate %/% 10 != 1969)
+  filter(year != 1969)
 
 #combine all website sources as being Internet source
 streetrx <- streetrx %>%
@@ -565,14 +569,62 @@ for certain interaction terms.
 2) Base model
 
 State: $s$. 
-$$y_{isr} = \mu + \alpha_{sr} + \epsilon_{ij}.$$
+$$y_{is} = \mu + \alpha_{s} + \epsilon_{is}.$$
 
 See how much heterogeniety.
 
 *May compare the fitted variance of regional level means and state level means. If regional level means have larger variance, it might indicate a clustering effect within regions.*
 
+```{r}
+model_plain <- 
+  lmer(log(ppm) ~ 1 + (1 | state), data = streetrx, REML = F)
+summary(model_plain)$AICtab
+```
+
 3) Adding predictors
 
 Criterion: BIC(?) for Bayesian predictor selection.
 
-Order: step-wise forward? May not find the optimum. Think of a good way to find a decent model.
+We do an exhaustive search.
+
+```{r}
+exhaustive_search <- function(raw_model, vars, data, REML = F) {
+  y_name <- deparse(raw_model[[2]])
+  group_name <- deparse(raw_model[[3]])
+  id <- 0 : (2^length(vars) - 1)
+  construct_model <- function(.id){
+    subset <- (.id %/% 2^(0:(length(vars) - 1))) %% 2 == 1
+    if (all(subset == F)){
+      RHS <- paste0(c("1", group_name), collapse = ' + ')
+    }
+    else {
+      RHS <- paste0(c(vars[subset], group_name), collapse = ' + ')
+    }
+    paste(y_name, RHS, sep = ' ~ ')
+  }
+  run_model <- function(.id){
+    model_str <- construct_model(.id)
+    model_formula <- as.formula(model_str)
+    res <- lmer(model_formula, REML = REML, data = data)
+    return (summary(res)$AICtab)
+  }
+  
+  bind_cols(
+    model = sapply(id, construct_model),
+    as.data.frame(t(sapply(id, run_model)))
+  )
+}
+```
+
+```{r}
+ex_result <- exhaustive_search(
+  raw_model <- log(ppm) ~ (1 | state),
+  vars = c("year", "mgstr", "bulk_purchase", "source"),
+  data = streetrx,
+  REML = F
+)
+```
+
+```{r}
+ex_result
+```
