@@ -7,7 +7,6 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
-library(patchwork)
 ```
 
 
@@ -48,6 +47,7 @@ library(rstan)
 library(brms)
 library(knitr)
 library(kableExtra)
+library(patchwork)
 library(lubridate)
 library(gridExtra)
 
@@ -573,6 +573,10 @@ State: $s$.
 
 $$y_{is} = \mu + \alpha_{s} + \epsilon_{is}.$$
 
+Where $y_{is}$ is the ppm for purchase $i$ in state $s$
+
+
+
 See how much heterogeniety.
 
 *May compare the fitted variance of regional level means and state level means. If regional level means have larger variance, it might indicate a clustering effect within regions.*
@@ -628,8 +632,23 @@ ex_result <- exhaustive_search(
 ```
 
 ```{r}
-ex_result %>% arrange(BIC)
+ex_result %>% arrange(BIC) %>%
+  select(1, 3) %>%
+  kbl()
 ```
+
+Our best model is
+
+$y_{is} = \mu + \alpha_{s} + \beta_1mgstr_{is} + \beta_2bulkp_{is} + \beta_3source_{is} + \epsilon_{is}$
+
+$\alpha_s \sim Normal(\mu, \tau^2)$
+
+$\epsilon_{is} \sim Normal(0, \sigma^2)$ 
+
+Where $y_{is}$ is the ppm for purchase $i$ in state $s$
+
+And $mgstr_{is}$, $bulkp_{is}$, and $source_{is}$ are fixed effects
+
 
 ```{r}
 best_model <- ex_result %>% arrange(BIC) %>% .[1, "model"]
@@ -643,6 +662,8 @@ Posterior checks:
 ```{r}
 plot(res)
 ```
+
+Examine the normality of residuals
 
 ```{r}
 residual <- resid(res)
