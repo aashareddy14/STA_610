@@ -154,7 +154,8 @@ streetrx <- streetrx %>%
 
 # delete levels of mgstr that are not 5, 10, 40
 streetrx <- streetrx %>%
-  filter(mgstr %in% c(5,10,40))
+  filter(mgstr %in% c(5,10,40)) %>%
+  mutate(mgstr = as.factor(mgstr))
 
 # delete year of 1969 as it is likely an error
 streetrx <- streetrx %>%
@@ -693,12 +694,16 @@ ex_result <- exhaustive_search(
 ```{r}
 ex_result %>% arrange(BIC) %>%
   select(1, 3) %>%
-  kbl()
+  kbl(caption = "Exhaustive search of fixed effects using BIC") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
 ```
 
 Our best model is
 
-$y_{is} = \mu + \alpha_{s} + \beta_1mgstr_{is} + \beta_2bulkp_{is} + \beta_3source_{is} + \epsilon_{is}$
+$$
+y_{is} = \mu + \alpha_{s} + \beta_1I(mgstr_{is} = 10) + \beta_2I(mgstr_{is} = 40) + \beta_3I(bulkp_{is} = 1) + \beta_4I(source_{is} = internet) + \beta_4I(source_{is} = personal) + \epsilon_{is}
+$$
 
 $\alpha_s \sim Normal(\mu, \tau^2)$
 
@@ -755,6 +760,6 @@ as.data.frame(VarCorr(res)) %>%
   rename(var = vcov) %>%
   kbl(caption = "Variance estimates") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
-D```
+```
 
 
