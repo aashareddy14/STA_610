@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
+library(patchwork)
 ```
 
 
@@ -569,6 +570,7 @@ for certain interaction terms.
 2) Base model
 
 State: $s$. 
+
 $$y_{is} = \mu + \alpha_{s} + \epsilon_{is}.$$
 
 See how much heterogeniety.
@@ -626,5 +628,29 @@ ex_result <- exhaustive_search(
 ```
 
 ```{r}
-ex_result
+ex_result %>% arrange(BIC)
+```
+
+```{r}
+best_model <- ex_result %>% arrange(BIC) %>% .[1, "model"]
+res <- lmer(as.formula(best_model), REML = F, data = streetrx)
+summary(res)
+```
+
+
+Posterior checks:
+
+```{r}
+plot(res)
+```
+
+```{r}
+residual <- resid(res)
+p1 <- ggplot() + 
+  geom_qq(aes(sample = residual)) +
+  geom_qq_line(aes(sample = residual)) +
+  coord_equal()
+p2 <- ggplot() +
+  geom_density(aes(x = residual))
+p1 + p2
 ```
