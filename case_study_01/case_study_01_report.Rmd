@@ -570,7 +570,11 @@ for certain interaction terms.
 2) Base model
 
 State: $s$. 
+<<<<<<< HEAD
 $$y_{is} = \mu + \alpha_{s} + \epsilon_{is}.$$
+=======
+$$y_{isr} = \mu + \alpha_{sr} + \epsilon_{ij}.$$
+>>>>>>> 2b1db01d1c0fa3169e51778a04a971243645dbb7
 
 See how much heterogeniety.
 
