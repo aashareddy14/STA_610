@@ -570,6 +570,7 @@ for certain interaction terms.
 2) Base model
 
 State: $s$. 
+
 $$y_{is} = \mu + \alpha_{s} + \epsilon_{is}.$$
 
 See how much heterogeniety.
@@ -653,4 +654,3 @@ p2 <- ggplot() +
   geom_density(aes(x = residual))
 p1 + p2
 ```
-
