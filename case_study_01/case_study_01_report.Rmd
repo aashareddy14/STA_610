@@ -296,8 +296,8 @@ streetrx %>%
     year = yq_pdate %/% 10, 
     quarter = yq_pdate %% 10
   ) %>%
-  ggplot(., aes(x = factor(year), y = log(ppm))) +
-  geom_boxplot(aes(fill = factor(year))) + 
+  ggplot(., aes(x = year, y = log(ppm))) +
+  geom_jitter() + 
   labs(title = "Relationship between year and log(ppm)", 
        x = "Year") + 
   theme(legend.position = "none", 
@@ -705,7 +705,7 @@ $$
 y_{is} = \mu + \alpha_{s} + \beta_1I(mgstr_{is} = 10) + \beta_2I(mgstr_{is} = 40) + \beta_3I(bulkp_{is} = 1) + \beta_4I(source_{is} = internet) + \beta_4I(source_{is} = personal) + \epsilon_{is}
 $$
 
-$\alpha_s \sim Normal(\mu, \tau^2)$
+$\alpha_s \sim Normal(\0, \tau^2)$
 
 $\epsilon_{is} \sim Normal(0, \sigma^2)$ 
 
