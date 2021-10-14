@@ -616,6 +616,101 @@ interaction effects. Even for those listed above the evidence was not substantia
 in our EDA, and some of the variation is likely due to a lack of observations
 for certain interaction terms.
 
+## EDA for Random slopes
+
+1) Mgstr and state
+
+```{r}
+set.seed(7)
+state_rand <- streetrx %>%
+  group_by(state) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  filter(n > 30) %>%
+  ungroup() %>%
+  sample_n(8) %>%
+  pull(state)
+
+state_rand <- as.character(state_rand)
+
+streetrx %>%
+  filter(state %in% c(state_rand)) %>%
+  ggplot(., aes(x = mgstr, y = log(ppm))) + 
+  geom_boxplot() + 
+  facet_wrap(~state) + 
+  labs(title = "Distribution of log(ppm) by mgstr and 8 random states")
+```
+
+2) source and state
+
+```{r}
+set.seed(0)
+state_rand <- streetrx %>%
+  group_by(state) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  filter(n > 30) %>%
+  ungroup() %>%
+  sample_n(8) %>%
+  pull(state)
+
+state_rand <- as.character(state_rand)
+
+streetrx %>%
+  filter(state %in% c(state_rand)) %>%
+  ggplot(., aes(x = source, y = log(ppm))) + 
+  geom_boxplot() + 
+  facet_wrap(~state) + 
+  labs(title = "Distribution of log(ppm) by source and 8 random states")
+```
+
+3) year and state
+
+```{r}
+set.seed(7)
+state_rand <- streetrx %>%
+  group_by(state) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  filter(n > 30) %>%
+  ungroup() %>%
+  sample_n(8) %>%
+  pull(state)
+
+state_rand <- as.character(state_rand)
+
+streetrx %>%
+  filter(state %in% c(state_rand)) %>%
+  ggplot(., aes(x = year, y = log(ppm))) + 
+  geom_point() + 
+  facet_wrap(~state) + 
+  labs(title = "Distribution of log(ppm) by year and 8 random states")
+```
+
+4) bulk_purchase and state
+
+```{r}
+set.seed(99)
+state_rand <- streetrx %>%
+  group_by(state) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  filter(n > 30) %>%
+  ungroup() %>%
+  sample_n(8) %>%
+  pull(state)
+
+state_rand <- as.character(state_rand)
+
+streetrx %>%
+  filter(state %in% c(state_rand)) %>%
+  ggplot(., aes(x = bulk_purchase, y = log(ppm))) + 
+  geom_point() + 
+  facet_wrap(~state) + 
+  labs(title = "Distribution of log(ppm) by bulk_purchase \nand 8 random states") + 
+  coord_flip()
+```
+
 
 5. Model
 
