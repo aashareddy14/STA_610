@@ -705,7 +705,7 @@ state_rand <- as.character(state_rand)
 streetrx %>%
   filter(state %in% c(state_rand)) %>%
   ggplot(., aes(x = bulk_purchase, y = log(ppm))) + 
-  geom_point() + 
+  geom_boxplot() + 
   facet_wrap(~state) + 
   labs(title = "Distribution of log(ppm) by bulk_purchase \nand 8 random states") + 
   coord_flip()
