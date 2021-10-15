@@ -39,6 +39,29 @@ Modeling (Bo)
 
 Slides (Aasha)
 
+To do (10/15):
+- Data cleaning 
+  -   get rid of states with 1 observation
+- EDA
+  -   Cooks distance by state for assumption checking
+  -   For qq plot, don't try other transformations (square is too hard to interpret). Log transform takes the range to the whole real line 
+- modeling 
+  -   include interatctions using exhaustive search 
+  -   include year as a factor 
+  -   include empirical bayes (use BIC to select frequentist model then use frequentist results to inform priors, use uninformative variance priors)
+  
+  
+  To do:
+  - [Aasha] get rid of states with 1 obs
+  - [Bo] change exhaustive search function 
+  - [Marc] Cooks distance by state for assumption checking
+  - [Bo] BRMS
+  - [Shirley] interpret Bayesian 
+  - [Shirley] Data cleaning report writing
+  - [Aasha] EDA Report Writing
+  - [Bo] Modeling Report Writing
+  - [Marc] Interpretation Report Writing
+
 
 ```{r}
 library(tidyverse)
@@ -296,8 +319,8 @@ streetrx %>%
     year = yq_pdate %/% 10, 
     quarter = yq_pdate %% 10
   ) %>%
-  ggplot(., aes(x = factor(year), y = log(ppm))) +
-  geom_boxplot(aes(fill = factor(year))) + 
+  ggplot(., aes(x = year, y = log(ppm))) +
+  geom_jitter() + 
   labs(title = "Relationship between year and log(ppm)", 
        x = "Year") + 
   theme(legend.position = "none", 
@@ -616,6 +639,101 @@ interaction effects. Even for those listed above the evidence was not substantia
 in our EDA, and some of the variation is likely due to a lack of observations
 for certain interaction terms.
 
+## EDA for Random slopes
+
+1) Mgstr and state
+
+```{r}
+set.seed(7)
+state_rand <- streetrx %>%
+  group_by(state) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  filter(n > 30) %>%
+  ungroup() %>%
+  sample_n(8) %>%
+  pull(state)
+
+state_rand <- as.character(state_rand)
+
+streetrx %>%
+  filter(state %in% c(state_rand)) %>%
+  ggplot(., aes(x = mgstr, y = log(ppm))) + 
+  geom_boxplot() + 
+  facet_wrap(~state) + 
+  labs(title = "Distribution of log(ppm) by mgstr and 8 random states")
+```
+
+2) source and state
+
+```{r}
+set.seed(0)
+state_rand <- streetrx %>%
+  group_by(state) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  filter(n > 30) %>%
+  ungroup() %>%
+  sample_n(8) %>%
+  pull(state)
+
+state_rand <- as.character(state_rand)
+
+streetrx %>%
+  filter(state %in% c(state_rand)) %>%
+  ggplot(., aes(x = source, y = log(ppm))) + 
+  geom_boxplot() + 
+  facet_wrap(~state) + 
+  labs(title = "Distribution of log(ppm) by source and 8 random states")
+```
+
+3) year and state
+
+```{r}
+set.seed(7)
+state_rand <- streetrx %>%
+  group_by(state) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  filter(n > 30) %>%
+  ungroup() %>%
+  sample_n(8) %>%
+  pull(state)
+
+state_rand <- as.character(state_rand)
+
+streetrx %>%
+  filter(state %in% c(state_rand)) %>%
+  ggplot(., aes(x = year, y = log(ppm))) + 
+  geom_point() + 
+  facet_wrap(~state) + 
+  labs(title = "Distribution of log(ppm) by year and 8 random states")
+```
+
+4) bulk_purchase and state
+
+```{r}
+set.seed(99)
+state_rand <- streetrx %>%
+  group_by(state) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  filter(n > 30) %>%
+  ungroup() %>%
+  sample_n(8) %>%
+  pull(state)
+
+state_rand <- as.character(state_rand)
+
+streetrx %>%
+  filter(state %in% c(state_rand)) %>%
+  ggplot(., aes(x = bulk_purchase, y = log(ppm))) + 
+  geom_boxplot() + 
+  facet_wrap(~state) + 
+  labs(title = "Distribution of log(ppm) by bulk_purchase \nand 8 random states") + 
+  coord_flip()
+```
+
 
 5. Model
 
@@ -705,7 +823,7 @@ $$
 y_{is} = \mu + \alpha_{s} + \beta_1I(mgstr_{is} = 10) + \beta_2I(mgstr_{is} = 40) + \beta_3I(bulkp_{is} = 1) + \beta_4I(source_{is} = internet) + \beta_4I(source_{is} = personal) + \epsilon_{is}
 $$
 
-$\alpha_s \sim Normal(\mu, \tau^2)$
+$\alpha_s \sim Normal(\0, \tau^2)$
 
 $\epsilon_{is} \sim Normal(0, \sigma^2)$ 
 
