@@ -3,12 +3,13 @@ title: "Case Study 1"
 author: "Marc Brooks, Bo Liu, Shirley Mathur, Aasha Reddy"
 date: "10/6/2021"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
+                      fig.align = 'center')
 ```
 
 
@@ -69,7 +70,7 @@ To do (10/15):
 library(tidyverse)
 library(lme4)
 library(rstan)
-#library(brms)
+library(brms)
 library(knitr)
 library(kableExtra)
 library(patchwork)
@@ -78,9 +79,6 @@ library(gridExtra)
 
 options(scipen = 0, digits = 4)
 ggplot2::theme_set(ggplot2::theme_bw())
-#knitr::opts_chunk$set(
-#  fig.align = 'center', fig.width=5, fig.height=3, echo = FALSE
-#)
 ```
 
 
