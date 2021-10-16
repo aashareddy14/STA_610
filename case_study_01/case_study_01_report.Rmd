@@ -8,7 +8,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
 
@@ -65,11 +65,11 @@ To do (10/15):
   - [Marc] Interpretation Report Writing
 
 
-```{r}
+```{r, warning=FALSE}
 library(tidyverse)
 library(lme4)
 library(rstan)
-library(brms)
+#library(brms)
 library(knitr)
 library(kableExtra)
 library(patchwork)
@@ -78,15 +78,16 @@ library(gridExtra)
 
 options(scipen = 0, digits = 4)
 ggplot2::theme_set(ggplot2::theme_bw())
-knitr::opts_chunk$set(
-  fig.align = 'center', fig.width=5, fig.height=3, echo = FALSE
-)
+#knitr::opts_chunk$set(
+#  fig.align = 'center', fig.width=5, fig.height=3, echo = FALSE
+#)
 ```
 
 
 ```{r}
 #load data
-load("streetrx.RData")
+#load("case_study_01/streetrx.RData")
+load("~/Statistics - Duke University/2021 Fall/STA 610 - Hierarchical Models/STA_610_groupwork/case_study_01/streetrx.RData")
 
 # GROUP 1 - METHADONE
 # filter data for only methadone
@@ -397,7 +398,6 @@ mgstr_rand_slope <- streetrx %>%
   ggplot(., aes(x = mgstr, y = log(ppm), fill = mgstr)) + 
   geom_boxplot() + 
   facet_wrap(~state, ncol = 4) + 
-  labs(title = "Distribution of log(ppm) by mgstr and 8 random states") + 
   theme(legend.position = "none") + 
   coord_flip()
 ```
@@ -421,7 +421,6 @@ source_rand_slope <- streetrx %>%
   ggplot(., aes(x = source, y = log(ppm), fill = source)) + 
   geom_boxplot() + 
   facet_wrap(~state, ncol = 4) + 
-  labs(title = "Distribution of log(ppm) by source and 8 random states") + 
   theme(legend.position = "none") + 
   coord_flip()
 ```
@@ -445,12 +444,11 @@ bp_rand_slope <- streetrx %>%
   ggplot(., aes(x = bulk_purchase, y = log(ppm), fill = bulk_purchase)) + 
   geom_boxplot() + 
   facet_wrap(~state) + 
-  labs(title = "Distribution of log(ppm) by bulk_purchase \nand 8 random states") + 
   theme(legend.position = "none") + 
   coord_flip()
 ```
 
-```{r}
+```{r, fig.height=10}
 patchwork <- mgstr_rand_slope / source_rand_slope / bp_rand_slope
 
 patchwork + plot_annotation(
@@ -850,5 +848,9 @@ as.data.frame(VarCorr(res)) %>%
 
 
 # Interpretation and Results
+
+
+
+
 
 
