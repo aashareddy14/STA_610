@@ -2,7 +2,9 @@
 title: "Case Study 1"
 author: "Marc Brooks, Bo Liu, Shirley Mathur, Aasha Reddy"
 date: "10/6/2021"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -492,7 +494,7 @@ ggplot(streetrx) +
 )
 
 # Seems that there is a slight association.
-cor(streetrx$ppm, streetrx$mgstr, use = "complete.obs")
+# cor(streetrx$ppm, streetrx$mgstr, use = "complete.obs")
 
 
 ###### DATES ######
@@ -665,8 +667,6 @@ streetrx %>%
 
 # Outside of `mgstr` and `quarter`,  `bulk_purchase` and `quarter`, `source` and, and `mgstr` `bulk_purchase` and `mgstr` there was not strong evidence for other interaction effects. Even for those listed above the evidence was not substantial in our EDA, and some of the variation is likely due to a lack of observations for certain interaction terms.
 ```
-
-
 
 
 # Model Building and Selection
@@ -850,3 +850,5 @@ as.data.frame(VarCorr(res)) %>%
 
 
 # Interpretation and Results
+
+
