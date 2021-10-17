@@ -548,7 +548,6 @@ streetrx %>%
 
 # Model Building and Selection
 
-
 **I do not have much information about what the best model should be, given that we are still in early EDA. Nevertheless, a priori I have some preference on what to use / what not to use.**
 
 1) Grouping variable
