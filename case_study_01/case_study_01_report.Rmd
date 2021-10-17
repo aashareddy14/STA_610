@@ -546,72 +546,8 @@ streetrx %>%
 # Outside of `mgstr` and `quarter`,  `bulk_purchase` and `quarter`, `source` and, and `mgstr` `bulk_purchase` and `mgstr` there was not strong evidence for other interaction effects. Even for those listed above the evidence was not substantial in our EDA, and some of the variation is likely due to a lack of observations for certain interaction terms.
 ```
 
-
-
-<<<<<<< HEAD
-state_rand <- as.character(state_rand)
-
-streetrx %>%
-  filter(state %in% c(state_rand)) %>%
-  ggplot(., aes(x = source, y = log(ppm))) + 
-  geom_boxplot() + 
-  facet_wrap(~state) + 
-  labs(title = "Distribution of log(ppm) by source and 8 random states")
-```
-
-3) year and state
-
-```{r}
-set.seed(7)
-state_rand <- streetrx %>%
-  group_by(state) %>%
-  count() %>%
-  arrange(desc(n)) %>%
-  filter(n > 30) %>%
-  ungroup() %>%
-  sample_n(8) %>%
-  pull(state)
-
-state_rand <- as.character(state_rand)
-
-streetrx %>%
-  filter(state %in% c(state_rand)) %>%
-  ggplot(., aes(x = log(ppm), y = as.factor(year))) + 
-  geom_boxplot() + 
-  coord_flip() +
-  facet_wrap(~state) + 
-  labs(title = "Distribution of log(ppm) by year and 8 random states")
-```
-
-4) bulk_purchase and state
-
-```{r}
-set.seed(99)
-state_rand <- streetrx %>%
-  group_by(state) %>%
-  count() %>%
-  arrange(desc(n)) %>%
-  filter(n > 30) %>%
-  ungroup() %>%
-  sample_n(8) %>%
-  pull(state)
-
-state_rand <- as.character(state_rand)
-
-streetrx %>%
-  filter(state %in% c(state_rand)) %>%
-  ggplot(., aes(x = bulk_purchase, y = log(ppm))) + 
-  geom_boxplot() + 
-  facet_wrap(~state) + 
-  labs(title = "Distribution of log(ppm) by bulk_purchase \nand 8 random states") + 
-  coord_flip()
-```
-
-
-5. Model
-=======
 # Model Building and Selection
->>>>>>> main
+
 
 **I do not have much information about what the best model should be, given that we are still in early EDA. Nevertheless, a priori I have some preference on what to use / what not to use.**
 
