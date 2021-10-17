@@ -84,7 +84,7 @@ ggplot2::theme_set(ggplot2::theme_bw())
 
 ```{r}
 #load data
-#load("case_study_01/streetrx.RData")
+# load("case_study_01/streetrx.RData")
 load("~/Statistics - Duke University/2021 Fall/STA 610 - Hierarchical Models/STA_610_groupwork/case_study_01/streetrx.RData")
 
 # GROUP 1 - METHADONE
@@ -821,20 +821,56 @@ p2 <- ggplot() +
   geom_density(aes(x = residual))
 p1 + p2
 ```
-
+# Interpretation of results
 Result plots:
+
+### Fixed effects
+```{r}
+coef(summary(res)) %>%
+  kbl(caption = "Fixed effect estimates") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+
+As we took the log of our response ppm, we must exponentiate our estimates in order 
+to interpret the effect of each variable on `ppm`. The following results are:
+
+* Grand mean: Our estimated grand mean for `ppm` is 1.21. This is the average 
+price per mg of methadone across all states for dosages of 50mg, cases where the purchase was heard of, 
+and non bulk purchases.    
+
+* `mgstr`: On average, we expect a decrease in dosage from 
+50 mg to 10 mg to result in a 35.24% decrease in price and decrease from 50 mg 
+to 40 mg to yield a 56.13% decrease in price.   
+
+* `bulk_puchase`: On average bulk purchases are 12.41% cheaper, in terms of price per mg, 
+than non bulk purchases.
+
+* `source`: Purchases that were personally reported are on average 10% less
+price per mg than purchases that had been heard second hand, while we expect a purchase that was
+discovered through the internet to be 33% less price per mg than a purchase that 
+had been heard second hand.
+
+
+
+### Random effects
+
+The following illustrates the sorted estimated random state intercepts with 
+95% confidence intervals.
 
 ```{r}
 # dotplot
 library(lattice)
 dotplot(ranef(res, condVar = TRUE))$state
 ```
+Overall the plot demonstrates significant heterogeneity across states in the baseline ppm of methadone 
+for purchases that were in bulk and that had been reported by word of mouth. Three 
+states, California, Missouri, and Arizona, do not contain 0 in their 95% confidence 
+interval, implying a significant difference in their baseline ppm and the grand 
+mean across all states. The plot also shows that the largest estimate was for Tennessee, 14.8% 
+increase from the grand mean, while the smallest estimate was for California, a 18.13% decrease
+from the grand mean. 
 
-```{r}
-coef(summary(res)) %>%
-  kbl(caption = "Fixed effect estimates") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
-```
 
 ```{r}
 as.data.frame(VarCorr(res)) %>%
@@ -844,6 +880,66 @@ as.data.frame(VarCorr(res)) %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
+Our across state variance of ppm is fairly small at 0.0124 while the within 
+state variance remains large at 0.6548. Clearly, there is still a lot of within-group
+variance that our model is unable to explain.
+
+Model Diagnostics (Influence of groups)   
+
+Now that we have our final model we will perform, model diagnostics to determine 
+if there are influential groups that might be effecting our model assumptions. 
+First we will look at the DFBETAS of each parameter for each state. 
+Following this, we use Cook's distance as another criteria to determine if there 
+are cases of influential states.    
+
+```{r}
+library(influence.ME)
+```
+
+```{r}
+best_model.inf <- influence(res, "state")
+cutoff <- 2/sqrt(length(unique(streetrx$state)))
+```
+
+
+```{r}
+dfbetas_inf <- round(dfbetas(best_model.inf), 4)
+above_cutoff <- apply(abs(dfbetas_inf) > cutoff, MARGIN = 1, any)
+dfbetas_inf[above_cutoff,] %>%
+  kbl(caption = "Level of influences states have on single parameter estiamtes.",
+      position = 'HOLD') %>% 
+  kable_styling()
+```
+
+
+    
+The above table contains the states such that at least one parameter had a standardized
+difference in their estimate that exceeded our cutoff when excluding that state. Note that
+many of the states included have the largest sample sizes in the data set.  
+
+
+
+```{r, fig.height=15, fig.width=10}
+plot(best_model.inf,which="dfbetas",xlab="DFBETAS",ylab="State")
+```
+
+
+
+```{r, fig.height=7, fig.width=5}
+plot(best_model.inf,which="cook",cutoff=cutoff,
+sort=TRUE,xlab="Cook's D",ylab="State")
+```
+
+
+
+When examining Cook's distance, Texas is the only state that exceeds the cutoff
+and can be considered influential. This is not surprising as Texas had multiple 
+parameters such that their DFBETAS exceeded the cutoff and Cook's distance is a 
+summary measure of how an observation influences all parameter estimates. While,
+it seems Texas is an influence group we have yet to determine if it is an outlier. 
+At the same time, Texas is has the third largest sample size in the data set and 
+is an important data point in the analysis so it does not make sense to consider 
+deleting this group.
 
 # Interpretation and Results
 
