@@ -13,14 +13,24 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
 ```
 
 10/17 Meeting, things to discuss
-- should we move the Cooks distance to the appendix?
-- discussion of qq plot is needed
-- should we interpret the Bayesian model?
-- Current bayesian model does not use the results from the frequentist model, does it?
-- Model building section - only include the ex_result_int table? 
-- finish data cleaning section writing
-- finish model building section writing
 - Need to make a code appendix once the report is completely finalized 
+
+To do (10/17):
+- [Marc] Move cooks distance to appendix along with dfbetas - texas 
+- [Bo] Model building section - only include the ex_result_int table
+- [Marc] Report - talk about diagnostic section but put plots in appendix (Cook's distance, qq plot, residual plot)
+- [Shirley] Move bayesian to appendix. should we interpret the Bayesian model? Doesn't matter what we interpret because models are very close. Maybe we give a comparison between the two results and say that they are very similar (CI vs. credible interval). Side by side estimate of posterior mean of estimates and MLE ests? (6 param by 6 table)
+- [Shirley] Add pictures of the posterior distributions in the Appendix, this includes the traceplots
+- [Shirley] talk about why we choose frequentist model over Bayesian
+- [Bo] Bayesian model outputs are printings warnings 
+- [Bo] Current bayesian model does not use the results from the frequentist model, does it? This is fine - just explain why we chose those priors
+- [Aasha] Need to make a code appendix once the report is completely finalized 
+- [Aasha] make random effect font smaller 
+- [Bo] fixing merge conflicts
+- [Aasha] shorten EDA plots/move to appendix
+
+
+
 
 
 To do (10/15):
