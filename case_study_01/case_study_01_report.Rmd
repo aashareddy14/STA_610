@@ -107,7 +107,7 @@ Description = c("Price per mg (outcome of interest)",
 
 # Data Cleaning 
 
-We first examine missing data in the streetrx data. We substitute NA for all missing values. We see that some variables, such as ppm, city, source, mgstr and primary_reason have many missing values. For the purpose of our model, we will not use the primary_reason variable, as they contain the most missing observations. Source contains links to websites where individuals purchased the Methadone, which will not be helpful in the model. 
+We first examine missing data in the streetrx data. We substitute NA for all missing values. We see that some variables, such as ppm, city, source, mgstr and primary_reason have many missing values. For the purpose of our model, we will not use the primary_reason variable, as they contain the most missing observations (51% of observations missing, 2437 in total). Source contains links to websites where individuals purchased the Methadone, which will not be helpful in the model. 
 
 We also note that individuals self-report their city, state, and country, so there are some data entry errors. For instance, some observations report purchased in "New York" vs. "New York Manhattan" vs. "New York City", which all refer to the same city. Thus, this variable may not be reliable as a grouping variable to explore heterogeneity within location. This is not an issue with State, so we choose to use state as our grouping variable. We also note that all purchases were made in the USA. 
 
@@ -135,13 +135,13 @@ What to do with these missing values?
 streetrx <- data.frame(apply(streetrx, 2, function(x) gsub("^$|^ $", NA, x)))
 
 # table of variables with missing data
-tibble(
-  Variable = names(streetrx), 
-  `Number Missing` = apply(streetrx, 2, function(x) sum(is.na(x))),
-  `Proportion Missing` = apply(streetrx, 2, function(x) mean(is.na(x)))
-) %>%
-  kable(caption = "Number of observations missing per variable") %>%
-  kable_styling(latex_options = "HOLD_position")
+# tibble(
+#   Variable = names(streetrx), 
+#   `Number Missing` = apply(streetrx, 2, function(x) sum(is.na(x))),
+#   `Proportion Missing` = apply(streetrx, 2, function(x) mean(is.na(x)))
+# ) %>%
+#   kable(caption = "Number of observations missing per variable") %>%
+#   kable_styling(latex_options = "HOLD_position")
 
 # code factors and numeric variables 
 streetrx <- streetrx %>%
@@ -210,7 +210,7 @@ We explore the data first by examining the distribution of our outcome variable,
 
 We choose to do a log transformation of ppm. We can see in the below plot that the histogram of log(ppm) is relatively normally distributed and symmetric. Using a log transformation is a good choice as well because our raw data ppm observation are all greater than 0, and log transformations are still interpretable, which is important in this case study. 
 
-```{r}
+```{r, fig.height=3}
 ppm_hist1 <- streetrx %>%
   ggplot(aes(x = ppm, y = ..density..)) +
   geom_histogram(alpha = 0.4, fill=rainbow(30), bins=30, color = "black") +
