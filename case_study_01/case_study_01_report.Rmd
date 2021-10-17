@@ -67,6 +67,7 @@ library(kableExtra)
 library(patchwork)
 library(lubridate)
 library(gridExtra)
+library(broom)
 
 options(scipen = 0, digits = 4)
 ggplot2::theme_set(ggplot2::theme_bw())
@@ -558,8 +559,6 @@ streetrx %>%
 
 # Model Building and Selection
 
-
-
 In this section, we expect to build a model that explains what factors affect the drug price and accounts for the uncertainty in the model. To simplify the modeling while still being able to interpret uncertainty, we decide to use a two phase process. First, we run an exhaustive search on a bunch of models, and select the one that has minimum BIC. Then, we run a frequentist / Bayesian hierarchical model to estimate the parameters, including the coefficients and the variances.
 
 
@@ -638,27 +637,6 @@ Fitting the model with frequenst MLE, we have the following results.
 best_model <- ex_result_int %>% arrange(BIC) %>% .[1, "model"]
 res <- lmer(as.formula(best_model), REML = F, data = streetrx)
 summary(res)
-```
-
-
-Now we impose a prior on the parameters and fit the model using a Bayesian approach. Since we do not have much information about the model, we use non-informative priors:
-$$\beta_j \stackrel{iid}{\sim}\mathrm{Normal}(0,1), \tau_^2 \sim \mathrm{InvGamma}(0.1, 0.1), \sigma_^2 \sim \mathrm{InvGamma}(0.1, 0.1).$$
-```{r, message = F}
-priors <- c(
-  set_prior("normal(0, 1)", class = 'b'),
-  set_prior("inv_gamma(0.1, 0.1)", class = "sd", group = "state"),
-  set_prior("inv_gamma(0.1, 0.1)", class = 'sd')
-)
-(bayes_result <- brm(as.formula(best_model), data = streetrx, prior = priors,
-                    verbose = F, refresh = 0))
-```
-
-One can see that the results given by Bayesian setting is almost the same is that from the frequentist setting.
-
-Posterior checks:
-
-```{r}
-plot(res)
 ```
 
 Examine the normality of residuals
@@ -860,3 +838,52 @@ patchwork + plot_annotation(
 )
 ```
 
+## Bayesian Model Comparison
+Here we imposed a prior on the parameters and fit the model using a Bayesian approach to see if we had differing estimates using this approach. Since we did not have much information about the model, we used non-informative priors:
+$$\beta_j \stackrel{iid}{\sim}\mathrm{Normal}(0,1), \tau_^2 \sim \mathrm{InvGamma}(0.1, 0.1), \sigma_^2 \sim \mathrm{InvGamma}(0.1, 0.1).$$
+```{r, message = F}
+priors <- c(
+  set_prior("normal(0, 1)", class = 'b'),
+  set_prior("inv_gamma(0.1, 0.1)", class = "sd", group = "state"),
+  set_prior("inv_gamma(0.1, 0.1)", class = 'sd')
+)
+bayes_result <- brm(as.formula(best_model), data = streetrx, prior = priors,
+                    verbose = F, refresh = 0)
+coef(best_model)
+
+bayes_fixed <- (summary(bayes_result)$fixed) %>%
+  select("Estimate") %>%
+  rename("Bayesian Model Esimate" = "Estimate")
+
+summary(bayes_result)$random
+
+summary(bayes_result)$spec_pars %>%
+  select("Estimate")
+
+summary(bayes_result)$random$state %>% select("Estimate")
+
+freq_est <- as.matrix(coef(summary(res))[,1])
+colnames(freq_est)[[1]] <- "Frequentist Model Estimate"
+
+
+
+cbind(freq_est, bayes_fixed) %>%
+  knitr::kable(caption = "Fixed effect estimates comparison") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                latex_options = "HOLD_position") 
+
+as.data.frame(VarCorr(res)) %>%
+  select(1, 4) %>%
+  rename(var = vcov) %>%
+  knitr::kable(caption = "Variance estimates") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                latex_options = "HOLD_position")
+```
+
+One can see that the results given by Bayesian setting is almost the same as that from the frequentist setting.
+
+Posterior checks:
+
+```{r}
+plot(bayes_result)
+```
