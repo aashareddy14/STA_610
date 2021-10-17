@@ -3,8 +3,8 @@ title: "Case Study 1"
 author: "Marc Brooks, Bo Liu, Shirley Mathur, Aasha Reddy"
 date: "10/6/2021"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -12,35 +12,6 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
                       fig.align = 'center')
 ```
 
-
-To do:
-
-Data cleaning (Shirley)
-* Delete levels of mgstr that are not 5, 10, 40
-* Delete year = 1969 
-* Don't use missing data - ignore
-* combine source into internet (categorical)
-
-
-EDA (Marc)
-* boxplot for source 
-* check for interactions
-* (wait until after presetnation) check for random slopes using EDA - choose 5 random states
-
-Modeling (Bo)
-* Don't use city 
-* Group by state - log of ppm distribution is very similar across regions. Compare across region variances to within region variances - if it within is smaller means are more liekly to be the same. 
-* use stepwise selection with BIC - start with base model and add covariates one by one. Exhaustive search (16)
-* start with base model of only random intercepts (don't think about random slopes until after presetnation)
-* primary_reason drop this variable - make a boxplot to see if log ppm distribution is different for price. From Mark's plot it doesn't look like they are different, so we can probably exclude this variable. Bo may explore this further - mention that if we had more time we could look into this more. 
-* time - seasonality. Use quarter as a categorical variable. Maybe there is not a strong seasonal affect (looking at the boxplot). 
-* use year as numerical variable (continuous) to account for potential inflation. 
-* mgstr - include as a categorical 
-* bulk purchase - we will include
-* variables to include - log(ppm) ~ (1|state) + year + mgstr + bulk_purchase + source 
-* check 2 models - check with 2004 and 2000 and then without these years and see how much it changes
-
-Slides (Aasha)
 
 To do (10/15):
 - Data cleaning 
@@ -130,8 +101,8 @@ Description = c("Price per mg (outcome of interest)",
 ",
 "primary reason for purchase"
 )) %>%
-  kbl(caption = "Variable Descriptions", 
-      position = "HOLD")
+  kable(caption = "Variable Descriptions") %>%
+  kable_styling(latex_options = "HOLD_position")
 ```
 
 # Data Cleaning 
@@ -169,8 +140,8 @@ tibble(
   `Number Missing` = apply(streetrx, 2, function(x) sum(is.na(x))),
   `Proportion Missing` = apply(streetrx, 2, function(x) mean(is.na(x)))
 ) %>%
-  kbl(caption = "Number of observations missing per variable",
-    position = 'HOLD')
+  kable(caption = "Number of observations missing per variable") %>%
+  kable_styling(latex_options = "HOLD_position")
 
 # code factors and numeric variables 
 streetrx <- streetrx %>%
@@ -347,7 +318,7 @@ streetrx %>% mutate(quarter = yq_pdate %% 10) %>%
 The last variable in our dataset is primary reason for the purchase of Methadone. We note in the data cleaning section that this variable contains many missing observations, so we choose to exclude it. 
 
 
-#### Determine that random slopes are not useful to consider in our model
+#### Assessing Random Slopes
 
 We next assess whether random slopes of our chosen variables by state would be useful. We note that we only have one continuous variable, year. In the below plots, we do not examine the trend of variables by all states. Instead, we filter for states with larger than 30 observations, and then choose a random sample of 8 states. 
 
@@ -730,10 +701,6 @@ exhaustive_search <- function(raw_model, vars, data, REML = F) {
 }
 ```
 
-```{r}
-
-```
-
 
 ```{r}
 ex_result <- exhaustive_search(
@@ -774,12 +741,18 @@ ex_result_int %>% arrange(BIC) %>% head(10) %>%
 Our best model is
 
 $$
-y_{is} = \mu + \alpha_{s} + \beta_1I(mgstr_{is} = 10) + \beta_2I(mgstr_{is} = 40) + \beta_3I(bulkp_{is} = 1) + \beta_4I(source_{is} = internet) + \beta_4I(source_{is} = personal) + \epsilon_{is}
+\begin{aligned}
+y_{is} = \mu &+ \alpha_{s} + \beta_1I(mgstr_{is} = 10) + \beta_2I(mgstr_{is} = 40) + \beta_3I(bulkp_{is} = 1) \\
+&+ \beta_4I(source_{is} = internet) + \beta_4I(source_{is} = personal) + \epsilon_{is}
+\end{aligned}
 $$
 
-$\alpha_s \sim Normal(\0, \tau^2)$
-
-$\epsilon_{is} \sim Normal(0, \sigma^2)$ 
+$$
+\begin{aligned}
+\alpha_s &\sim Normal(0, \tau^2) \\
+\epsilon_{is} &\sim Normal(0, \sigma^2)
+\end{aligned}
+$$
 
 Where $y_{is}$ is the ppm for purchase $i$ in state $s$
 
@@ -821,19 +794,21 @@ p2 <- ggplot() +
   geom_density(aes(x = residual))
 p1 + p2
 ```
+
 # Interpretation of results
+
 Result plots:
 
 ### Fixed effects
 ```{r}
 coef(summary(res)) %>%
   kbl(caption = "Fixed effect estimates") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                latex_options = "HOLD_position")
 ```
 
 
-As we took the log of our response ppm, we must exponentiate our estimates in order 
-to interpret the effect of each variable on `ppm`. The following results are:
+As we took the log of our response ppm, we must exponentiate our estimates in order to interpret the effect of each variable on `ppm`. The following results are:
 
 * Grand mean: Our estimated grand mean for `ppm` is 1.21. This is the average 
 price per mg of methadone across all states for dosages of 50mg, cases where the purchase was heard of, 
@@ -847,10 +822,7 @@ to 40 mg to yield a 56.13% decrease in price.
 than non bulk purchases.
 
 * `source`: Purchases that were personally reported are on average 10% less
-price per mg than purchases that had been heard second hand, while we expect a purchase that was
-discovered through the internet to be 33% less price per mg than a purchase that 
-had been heard second hand.
-
+price per mg than purchases that had been heard second hand, while we expect a purchase that was discovered through the internet to be 33% less price per mg than a purchase that had been heard second hand.
 
 
 ### Random effects
@@ -863,10 +835,8 @@ The following illustrates the sorted estimated random state intercepts with
 library(lattice)
 dotplot(ranef(res, condVar = TRUE))$state
 ```
-Overall the plot demonstrates significant heterogeneity across states in the baseline ppm of methadone 
-for purchases that were in bulk and that had been reported by word of mouth. Three 
-states, California, Missouri, and Arizona, do not contain 0 in their 95% confidence 
-interval, implying a significant difference in their baseline ppm and the grand 
+
+Overall the plot demonstrates significant heterogeneity across states in the baseline ppm of methadone for purchases that were in bulk and that had been reported by word of mouth. Three states, California, Missouri, and Arizona, do not contain 0 in their 95% confidence interval, implying a significant difference in their baseline ppm and the grand 
 mean across all states. The plot also shows that the largest estimate was for Tennessee, 14.8% 
 increase from the grand mean, while the smallest estimate was for California, a 18.13% decrease
 from the grand mean. 
@@ -880,17 +850,13 @@ as.data.frame(VarCorr(res)) %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
-Our across state variance of ppm is fairly small at 0.0124 while the within 
-state variance remains large at 0.6548. Clearly, there is still a lot of within-group
-variance that our model is unable to explain.
+Our across state variance of ppm is fairly small at 0.0124 while the within state variance remains large at 0.6548. Clearly, there is still a lot of within-group variance that our model is unable to explain.
 
-Model Diagnostics (Influence of groups)   
+## Model Diagnostics (Influence of groups)   
 
-Now that we have our final model we will perform, model diagnostics to determine 
-if there are influential groups that might be effecting our model assumptions. 
-First we will look at the DFBETAS of each parameter for each state. 
-Following this, we use Cook's distance as another criteria to determine if there 
-are cases of influential states.    
+#### Cook's Distance
+
+Now that we have our final model we will perform, model diagnostics to determine if there are influential groups that might be effecting our model assumptions. First we will look at the DFBETAS of each parameter for each state. Following this, we use Cook's distance as another criteria to determine if there are cases of influential states.    
 
 ```{r}
 library(influence.ME)
@@ -912,17 +878,11 @@ dfbetas_inf[above_cutoff,] %>%
 ```
 
 
-    
-The above table contains the states such that at least one parameter had a standardized
-difference in their estimate that exceeded our cutoff when excluding that state. Note that
-many of the states included have the largest sample sizes in the data set.  
-
-
+The above table contains the states such that at least one parameter had a standardized difference in their estimate that exceeded our cutoff when excluding that state. Note that many of the states included have the largest sample sizes in the data set.  
 
 ```{r, fig.height=15, fig.width=10}
 plot(best_model.inf,which="dfbetas",xlab="DFBETAS",ylab="State")
 ```
-
 
 
 ```{r, fig.height=7, fig.width=5}
@@ -931,20 +891,8 @@ sort=TRUE,xlab="Cook's D",ylab="State")
 ```
 
 
+When examining Cook's distance, Texas is the only state that exceeds the cutoff and can be considered influential. This is not surprising as Texas had multiple parameters such that their DFBETAS exceeded the cutoff and Cook's distance is a summary measure of how an observation influences all parameter estimates. While, it seems Texas is an influence group we have yet to determine if it is an outlier. At the same time, Texas is has the third largest sample size in the data set and is an important data point in the analysis so it does not make sense to consider deleting this group.
 
-When examining Cook's distance, Texas is the only state that exceeds the cutoff
-and can be considered influential. This is not surprising as Texas had multiple 
-parameters such that their DFBETAS exceeded the cutoff and Cook's distance is a 
-summary measure of how an observation influences all parameter estimates. While,
-it seems Texas is an influence group we have yet to determine if it is an outlier. 
-At the same time, Texas is has the third largest sample size in the data set and 
-is an important data point in the analysis so it does not make sense to consider 
-deleting this group.
-
-# Interpretation and Results
-
-
-
-
+#### Normality
 
 
