@@ -67,6 +67,7 @@ library(kableExtra)
 library(patchwork)
 library(lubridate)
 library(gridExtra)
+library(influence.ME)
 
 options(scipen = 0, digits = 4)
 ggplot2::theme_set(ggplot2::theme_bw())
@@ -655,22 +656,6 @@ One can see that the results given by Bayesian setting is almost the same is tha
 
 Posterior checks:
 
-```{r}
-plot(res)
-```
-
-Examine the normality of residuals
-
-```{r}
-residual <- resid(res)
-p1 <- ggplot() + 
-  geom_qq(aes(sample = residual)) +
-  geom_qq_line(aes(sample = residual)) +
-  coord_equal()
-p2 <- ggplot() +
-  geom_density(aes(x = residual))
-p1 + p2
-```
 
 # Interpretation of results
 
@@ -713,8 +698,7 @@ library(lattice)
 dotplot(ranef(res, condVar = TRUE))$state
 ```
 
-Overall the plot demonstrates significant heterogeneity across states in the baseline ppm of methadone for purchases that were in bulk and that had been reported by word of mouth. Three states, California, Missouri, and Arizona, do not contain 0 in their 95% confidence interval, implying a significant difference in their baseline ppm and the grand 
-mean across all states. The plot also shows that the largest estimate was for Tennessee, 14.8% 
+Overall the plot demonstrates significant heterogeneity across states in the baseline ppm of methadone for purchases that were in bulk and that had been reported by word of mouth. Three states, California, Missouri, and Arizona, do not contain 0 in their 95% confidence interval, implying a significant difference in their baseline ppm and the grand mean across all states. The plot also shows that the largest estimate was for Tennessee, 14.8% 
 increase from the grand mean, while the smallest estimate was for California, a 18.13% decrease
 from the grand mean. 
 
@@ -728,51 +712,47 @@ as.data.frame(VarCorr(res)) %>%
                 latex_options = "HOLD_position")
 ```
 
-Our across state variance of ppm is fairly small at 0.0124 while the within state variance remains large at 0.6548. Clearly, there is still a lot of within-group variance that our model is unable to explain.
+Our across state variance of ppm is fairly small at 0.0124 while the within 
+state variance remains large at 0.6548. Clearly, there is still a lot of 
+within-group variance that our model is unable to explain.
 
-## Model Diagnostics (Influence of groups)   
+## Model Diagnostics
 
-#### Cook's Distance
+#### Residual Analysis
 
-Now that we have our final model we will perform, model diagnostics to determine if there are influential groups that might be effecting our model assumptions. First we will look at the DFBETAS of each parameter for each state. Following this, we use Cook's distance as another criteria to determine if there are cases of influential states.    
+Through examining our residuals we can determine how well our model assumptions
+hold. The plot of our residual against the fitted values are somewhat reassuring. 
+Aside for a couple points that appear to be potential outliers, we observed that 
+the constant variance and linearity conditions are met. It is possible that the 
+two outliers contribute to our larger within state variance, though this is someone 
+we do not explore in this analysis. 
 
-```{r}
-library(influence.ME)
-```
+The normality assumption is not met, as the distribution of the residuals appears 
+to have fatter tails, particularly on the left side of the distribution where a 
+few outliers are present. With that being said, the density of the residuals is 
+fairly symmetric and centered at 0.
 
-```{r}
-best_model.inf <- influence(res, "state")
-cutoff <- 2/sqrt(length(unique(streetrx$state)))
-```
+#### Influential Groups
 
+Now we take steps to determine if there are influential groups that might be 
+effecting our model assumptions. First we look at the DFBETAS of each parameter 
+for each state. Following this, we use Cook's distance as another criteria to 
+determine if there are cases of influential states.    
 
-```{r}
-dfbetas_inf <- round(dfbetas(best_model.inf), 4)
-above_cutoff <- apply(abs(dfbetas_inf) > cutoff, MARGIN = 1, any)
-dfbetas_inf[above_cutoff,] %>%
-  knitr::kable(caption = "Level of influences states have on single parameter estiamtes") %>% 
-  kable_styling(latex_options = "HOLD_position")
+There are 14 states such that at least one parameter had a standardized difference
+in their estimate that exceeded our cutoff when excluding that state. Note that 
+many of the states included have the largest sample sizes in the data set. These 
+include California, Texas, and New York. A table of states and their corresponding 
+DFBETAS for each variable can be seen in the appendix.
 
-```
-
-
-The above table contains the states such that at least one parameter had a standardized difference in their estimate that exceeded our cutoff when excluding that state. Note that many of the states included have the largest sample sizes in the data set.  
-
-```{r, fig.height=15, fig.width=10}
-plot(best_model.inf,which="dfbetas",xlab="DFBETAS",ylab="State")
-```
-
-
-```{r, fig.height=7, fig.width=5}
-plot(best_model.inf,which="cook",cutoff=cutoff,
-sort=TRUE,xlab="Cook's D",ylab="State")
-```
-
-
-When examining Cook's distance, Texas is the only state that exceeds the cutoff and can be considered influential. This is not surprising as Texas had multiple parameters such that their DFBETAS exceeded the cutoff and Cook's distance is a summary measure of how an observation influences all parameter estimates. While, it seems Texas is an influence group we have yet to determine if it is an outlier. At the same time, Texas is has the third largest sample size in the data set and is an important data point in the analysis so it does not make sense to consider deleting this group.
-
-#### Normality
-
+When examining Cook's distance, Texas is the only state that exceeds the cutoff 
+and can be considered influential. This is not surprising as Texas had multiple 
+parameters with DFBETAS that exceeded the cutoff and Cook's distance is a 
+summary measure of how an observation influences all parameter estimates. While, 
+it seems Texas is an influential group we have yet to determine if it is an outlier as well. 
+At the same time, Texas has the third largest sample size in the data set and 
+clearly a state we would want to include in the analysis so it does not make sense to 
+consider deleting this group.
 
 
 # Appendix
@@ -858,3 +838,50 @@ patchwork + plot_annotation(
 )
 ```
 
+
+
+## Model Diagnostics
+
+### Residual Plots
+
+```{r}
+plot(res)
+```
+
+
+```{r}
+residual <- resid(res)
+p1 <- ggplot() + 
+  geom_qq(aes(sample = residual)) +
+  geom_qq_line(aes(sample = residual)) +
+  coord_equal()
+p2 <- ggplot() +
+  geom_density(aes(x = residual))
+p1 + p2
+```
+
+### Influential Groups
+
+Table of DFBETAS 
+
+```{r}
+best_model.inf <- influence(res, "state")
+cutoff <- 2/sqrt(length(unique(streetrx$state)))
+
+dfbetas_inf <- round(dfbetas(best_model.inf), 4)
+above_cutoff <- apply(abs(dfbetas_inf) > cutoff, MARGIN = 1, any)
+dfbetas_inf[above_cutoff,] %>%
+  knitr::kable(caption = "Level of influence states have on single parameter estiamtes") %>% 
+  kable_styling(latex_options = "HOLD_position")
+
+```
+
+```{r, fig.height=15, fig.width=10}
+plot(best_model.inf,which="dfbetas",xlab="DFBETAS",ylab="State")
+```
+
+
+```{r, fig.height=7, fig.width=5}
+plot(best_model.inf,which="cook",cutoff=cutoff,
+sort=TRUE,xlab="Cook's D",ylab="State")
+```
