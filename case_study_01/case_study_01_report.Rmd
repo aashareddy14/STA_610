@@ -27,7 +27,7 @@ To do (10/17):
 - [Aasha] Need to make a code appendix once the report is completely finalized 
 - [Aasha] make random effect font smaller 
 - [Bo] fixing merge conflicts
-- [Aasha] shorten EDA plots/move to appendix
+- [Aasha] shorten EDA plots/move to appendix .
 
 
 
