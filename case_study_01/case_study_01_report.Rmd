@@ -65,8 +65,8 @@ ggplot2::theme_set(ggplot2::theme_bw())
 
 ```{r}
 #load data
-# load("case_study_01/streetrx.RData")
-load("~/Statistics - Duke University/2021 Fall/STA 610 - Hierarchical Models/STA_610_groupwork/case_study_01/streetrx.RData")
+load("streetrx.RData")
+#load("~/Statistics - Duke University/2021 Fall/STA 610 - Hierarchical Models/STA_610_groupwork/case_study_01/streetrx.RData")
 
 # GROUP 1 - METHADONE
 # filter data for only methadone
@@ -90,9 +90,11 @@ We first clean data and conduct exploratory data analysis (EDA) to assess any ne
 
 # Data and Cleaning
 
-We first examine missing data in the streetrx data. We substitute NA for all missing values. We see that some variables, such as ppm, city, source, mgstr and primary_reason have many missing values. For the purpose of our model, we will not use the primary_reason variable, as they contain the most missing observations. Source contains links to websites where individuals purchased the Methadone, which will not be helpful in the model. 
+We first examine missing data in the streetrx data. We substitute NA for all missing values. We see that some variables, such as ppm, city, source, mgstr and primary_reason have many missing values. For the purpose of our model, we will not use the primary_reason variable, as they contain the most missing observations. We also note that individuals self-report their city, state, and country, so there are some data entry errors. For instance, some observations report purchased in "New York" vs. "New York Manhattan" vs. "New York City", which all refer to the same city. Thus, this variable may not be reliable as a grouping variable to explore heterogeneity within location. This is not an issue with State, so we choose to use state as our grouping variable. We also note that all purchases were made in the USA. 
 
-We also note that individuals self-report their city, state, and country, so there are some data entry errors. For instance, some observations report purchased in "New York" vs. "New York Manhattan" vs. "New York City", which all refer to the same city. Thus, this variable may not be reliable as a grouping variable to explore heterogeneity within location. This is not an issue with State, so we choose to use state as our grouping variable. We also note that all purchases were made in the USA. 
+Then, we proceeded to modify variables and remove observation as needed. We modified the types of the variables as needed to make sure that variables were reflected as factors or numeric depending on the variable. We also noted that all of the observations with a missing value for price per milligram also were missing a value for the dosage, so we removed all of these observations as it is nonsensical to include observations that are missing a value for the response variable. The fact that these variables also were missing the dosage value then leads to us having no missing dosage values in the data we use for modeling, which is helpful. Following that, from our EDA we noticed that most of the dosage values were either 5, 10, or 40 mg, so we decided to remove the few observations that did not have these values (these were less than 10 observations did not have these dosage), and then we coded the dosage variable (mgstr) as a factor variable since it only has three levels. Following that, we noted while examining the that two of the observations had stated 1969 as the year, which did not make sense considering StreetRx did not exist at the time, so we removed these observations as well. Since we decided to use stats as our grouping variable, we also removed observations that had input "USA" as the state, as these would not actually give us information about heterogeneity in price per milligram values amongst states. We also combined all of the various websites that were reported as sources and coded them all as "Internet" since all of these sites are essentially the same as having sourced from the Internet, and that greatly reduced the number of levels we would have for the Source variable. Finally, we removed any states with only one observation as it would not make sense to try to estimate within-group variance for states with only one observation. However, this only removed two states/terrirotires, Washington D.C. and Guam, so we can still get useful insights into the heterogeneity present in prices per milligram across all of the other states and territories in the dataset.
+
+
 
 ```{r}
 # variable description table
@@ -544,9 +546,8 @@ streetrx %>%
 # Outside of `mgstr` and `quarter`,  `bulk_purchase` and `quarter`, `source` and, and `mgstr` `bulk_purchase` and `mgstr` there was not strong evidence for other interaction effects. Even for those listed above the evidence was not substantial in our EDA, and some of the variation is likely due to a lack of observations for certain interaction terms.
 ```
 
-
-
 # Model Building and Selection
+
 
 **I do not have much information about what the best model should be, given that we are still in early EDA. Nevertheless, a priori I have some preference on what to use / what not to use.**
 
