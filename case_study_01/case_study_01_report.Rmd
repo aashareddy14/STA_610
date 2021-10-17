@@ -558,26 +558,10 @@ streetrx %>%
 
 # Model Building and Selection
 
-<<<<<<< HEAD
-**I do not have much information about what the best model should be, given that we are still in early EDA. Nevertheless, a priori I have some preference on what to use / what not to use.**
 
-1) Grouping variable
-
-- `USA_region` and `state` are natural grouping variables - and required for the analysis purpose.
-- Grouping on binary variables is equivalent to a random slope for it. If we decide to put a random slope on a binary variable, we should put it as a grouping variable for ease to interpret.
-- Other categorical variables are subject on how many levels we keep.
-
-2) Base model
-
-State: $s$. 
-
-$$y_{is} = \mu + \alpha_{s} + \epsilon_{is}.$$
-
-Where $y_{is}$ is the ppm for purchase $i$ in state $s$
-=======
 
 In this section, we expect to build a model that explains what factors affect the drug price and accounts for the uncertainty in the model. To simplify the modeling while still being able to interpret uncertainty, we decide to use a two phase process. First, we run an exhaustive search on a bunch of models, and select the one that has minimum BIC. Then, we run a frequentist / Bayesian hierarchical model to estimate the parameters, including the coefficients and the variances.
->>>>>>> main
+
 
 ## Model Selection
 
