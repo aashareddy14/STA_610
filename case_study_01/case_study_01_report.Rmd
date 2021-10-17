@@ -702,7 +702,7 @@ Result plots:
 ### Fixed effects
 ```{r}
 coef(summary(res)) %>%
-  kbl(caption = "Fixed effect estimates") %>%
+  knitr::kable(caption = "Fixed effect estimates") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
                 latex_options = "HOLD_position")
 ```
@@ -746,8 +746,9 @@ from the grand mean.
 as.data.frame(VarCorr(res)) %>%
   select(1, 4) %>%
   rename(var = vcov) %>%
-  kbl(caption = "Variance estimates") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+  knitr::kable(caption = "Variance estimates") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                latex_options = "HOLD_position")
 ```
 
 Our across state variance of ppm is fairly small at 0.0124 while the within state variance remains large at 0.6548. Clearly, there is still a lot of within-group variance that our model is unable to explain.
@@ -772,9 +773,9 @@ cutoff <- 2/sqrt(length(unique(streetrx$state)))
 dfbetas_inf <- round(dfbetas(best_model.inf), 4)
 above_cutoff <- apply(abs(dfbetas_inf) > cutoff, MARGIN = 1, any)
 dfbetas_inf[above_cutoff,] %>%
-  kbl(caption = "Level of influences states have on single parameter estiamtes.",
-      position = 'HOLD') %>% 
-  kable_styling()
+  knitr::kable(caption = "Level of influences states have on single parameter estiamtes") %>% 
+  kable_styling(latex_options = "HOLD_position")
+
 ```
 
 
