@@ -559,7 +559,7 @@ streetrx %>%
 # Model Building and Selection
 
 
-In this section, we expect to build a model that explains what factors affect the drug price and accounts for the uncertainty in the model. To simplify the modelling process while still being easy to interpret uncertainty, we decide to use a naive bayesian approach of model selection. The process has two phases. First, we run an exhaustive search on a bunch of models, and select the one that has minimum BIC. Then, we run a Bayesian hierarchical model to estimate the parameters, including the coefficients and the variances.
+In this section, we expect to build a model that explains what factors affect the drug price and accounts for the uncertainty in the model. To simplify the modeling while still being able to interpret uncertainty, we decide to use a two phase process. First, we run an exhaustive search on a bunch of models, and select the one that has minimum BIC. Then, we run a frequentist / Bayesian hierarchical model to estimate the parameters, including the coefficients and the variances.
 
 ## Model Selection
 
