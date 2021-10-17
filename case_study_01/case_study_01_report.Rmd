@@ -873,6 +873,8 @@ sort=TRUE,xlab="Cook's D",ylab="State")
 ```
 
 ## Bayesian Model Comparison
+
+### Model Fitting
 Here we imposed a prior on the parameters and fit the model using a Bayesian approach to see if we had differing estimates using this approach. Since we did not have much information about the model, we used non-informative priors:
 $$\beta_j \stackrel{iid}{\sim}\mathrm{Normal}(0,1), \tau_^2 \sim \mathrm{InvGamma}(0.1, 0.1), \sigma_^2 \sim \mathrm{InvGamma}(0.1, 0.1).$$
 ```{r, message = F}
@@ -881,8 +883,13 @@ priors <- c(
   set_prior("inv_gamma(0.1, 0.1)", class = "sd", group = "state"),
   set_prior("inv_gamma(0.1, 0.1)", class = 'sd')
 )
+
 bayes_result <- brm(as.formula(best_model), data = streetrx, prior = priors,
                     verbose = F, refresh = 0)
+```
+
+### Estimates Comparison
+```{r}
 
 bayes_fixed <- (summary(bayes_result)$fixed) %>%
   select("Estimate") %>%
@@ -924,6 +931,7 @@ merge(bayesian_var, frequentist_est, by = "row.names") %>%
 
 From the above tables, we can see that the results given by Bayesian setting is almost the same as that from the frequentist setting.
 
+### Posterior Checks
 The below plots show our posterior distributions for all parameters of interest and traceplots to check that the sampling chains converged, which they did as shown below.
 ```{r}
 plot(bayes_result)
