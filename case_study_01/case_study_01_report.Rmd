@@ -885,3 +885,60 @@ plot(best_model.inf,which="dfbetas",xlab="DFBETAS",ylab="State")
 plot(best_model.inf,which="cook",cutoff=cutoff,
 sort=TRUE,xlab="Cook's D",ylab="State")
 ```
+
+## Bayesian Model Comparison
+Here we imposed a prior on the parameters and fit the model using a Bayesian approach to see if we had differing estimates using this approach. Since we did not have much information about the model, we used non-informative priors:
+$$\beta_j \stackrel{iid}{\sim}\mathrm{Normal}(0,1), \tau_^2 \sim \mathrm{InvGamma}(0.1, 0.1), \sigma_^2 \sim \mathrm{InvGamma}(0.1, 0.1).$$
+```{r, message = F}
+priors <- c(
+  set_prior("normal(0, 1)", class = 'b'),
+  set_prior("inv_gamma(0.1, 0.1)", class = "sd", group = "state"),
+  set_prior("inv_gamma(0.1, 0.1)", class = 'sd')
+)
+bayes_result <- brm(as.formula(best_model), data = streetrx, prior = priors,
+                    verbose = F, refresh = 0)
+
+bayes_fixed <- (summary(bayes_result)$fixed) %>%
+  select("Estimate") %>%
+  rename("Bayesian Model Esimate" = "Estimate")
+
+freq_est <- as.matrix(coef(summary(res))[,1])
+colnames(freq_est)[[1]] <- "Frequentist Model Estimate"
+
+
+
+cbind(freq_est, bayes_fixed) %>%
+  knitr::kable(caption = "Fixed effect estimates comparison") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                latex_options = "HOLD_position") 
+
+bayesian_var <- rbind(summary(bayes_result)$spec_pars %>%
+  select("Estimate"),
+  summary(bayes_result)$random$state %>% select("Estimate")) %>%
+  mutate(Estimate = Estimate^2) %>%
+  rename("Bayesian Model Estimate" = "Estimate")
+
+rownames(bayesian_var) <- c("Residual", "State")
+
+frequentist_est <- as.data.frame(VarCorr(res)) %>%
+  select(1, 4) %>%
+  rename(var = vcov) %>%
+  rename("Frequentist Model Estimate" = var) %>%
+  select("Frequentist Model Estimate")
+  
+
+rownames(frequentist_est) <- c("State", "Residual")
+
+merge(bayesian_var, frequentist_est, by = "row.names") %>%
+  rename("Source of Variation" = "Row.names") %>%
+  knitr::kable(caption = "Variance estimates comparison") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                latex_options = "HOLD_position")
+```
+
+From the above tables, we can see that the results given by Bayesian setting is almost the same as that from the frequentist setting.
+
+The below plots show our posterior distributions for all parameters of interest and traceplots to check that the sampling chains converged, which they did as shown below.
+```{r}
+plot(bayes_result)
+```
