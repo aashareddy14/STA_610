@@ -632,7 +632,7 @@ $$
 $$
 where $y_{is}$ is the ppm for purchase $i$ in state $s$, and $\mathrm{mgstr}_{is}$, $\mathrm{bulkp}_{is}$, and $\mathrm{source}_{is}$ are fixed effects.
 
-Fitting the model with frequenst MLE, we have the following results.
+Fitting the model with frequentist MLE, we have the following results.
 ```{r}
 best_model <- ex_result_int %>% arrange(BIC) %>% .[1, "model"]
 res <- lmer(as.formula(best_model), REML = F, data = streetrx)
@@ -640,21 +640,7 @@ summary(res)
 ```
 
 
-Now we impose a prior on the parameters and fit the model using a Bayesian approach. Since we do not have much information about the model, we use non-informative priors:
-$$\beta_j \stackrel{iid}{\sim}\mathrm{Normal}(0,1), \tau_^2 \sim \mathrm{InvGamma}(0.1, 0.1), \sigma_^2 \sim \mathrm{InvGamma}(0.1, 0.1).$$
-```{r, message = F}
-priors <- c(
-  set_prior("normal(0, 1)", class = 'b'),
-  set_prior("inv_gamma(0.1, 0.1)", class = "sd", group = "state"),
-  set_prior("inv_gamma(0.1, 0.1)", class = 'sd')
-)
-(bayes_result <- brm(as.formula(best_model), data = streetrx, prior = priors,
-                    verbose = F, refresh = 0))
-```
-
-One can see that the results given by Bayesian setting is almost the same is that from the frequentist setting.
-
-Posterior checks:
+We also explored using a Bayesian model, but found estimates from that model were very similar to the frequentist model we fitted, so we proceeded to interpret the frequntist model that we fitted above. The Bayesian model estimates and posterior distributions can be found in the appendix.
 
 
 # Interpretation of results
