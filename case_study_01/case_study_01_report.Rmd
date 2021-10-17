@@ -13,14 +13,24 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
 ```
 
 10/17 Meeting, things to discuss
-- should we move the Cooks distance to the appendix?
-- discussion of qq plot is needed
-- should we interpret the Bayesian model?
-- Current bayesian model does not use the results from the frequentist model, does it?
-- Model building section - only include the ex_result_int table? 
-- finish data cleaning section writing
-- finish model building section writing
 - Need to make a code appendix once the report is completely finalized 
+
+To do (10/17):
+- [Marc] Move cooks distance to appendix along with dfbetas - texas 
+- [Bo] Model building section - only include the ex_result_int table
+- [Marc] Report - talk about diagnostic section but put plots in appendix (Cook's distance, qq plot, residual plot)
+- [Shirley] Move bayesian to appendix. should we interpret the Bayesian model? Doesn't matter what we interpret because models are very close. Maybe we give a comparison between the two results and say that they are very similar (CI vs. credible interval). Side by side estimate of posterior mean of estimates and MLE ests? (6 param by 6 table)
+- [Shirley] Add pictures of the posterior distributions in the Appendix, this includes the traceplots
+- [Shirley] talk about why we choose frequentist model over Bayesian
+- [Bo] Bayesian model outputs are printings warnings 
+- [Bo] Current bayesian model does not use the results from the frequentist model, does it? This is fine - just explain why we chose those priors
+- [Aasha] Need to make a code appendix once the report is completely finalized 
+- [Aasha] make random effect font smaller 
+- [Bo] fixing merge conflicts
+- [Aasha] shorten EDA plots/move to appendix .
+
+
+
 
 
 To do (10/15):
@@ -199,7 +209,7 @@ streetrx <- streetrx %>%
 
 ### Checking distribution of outcome variable (ppm)
 
-We explore the data first by examining the distribution of our outcome variable, price per mg (ppm). We next examine the distribution of our outcome variable, ppm (price per mg). We can see that ppm spans a large range of values, from \$0.00025/mg to \$40/mg. We note from the below histogram that the distribution is highly right-skewed. To satisfy the conditional distribution assumption, we want to aim for ppm to be normally distributed and symmetric. This of course only examines the marginal distribution of ppm, but the idea is that this may carry over into the conditional distribution, which we examine after the model fitting process
+We explore the data first by examining the distribution of our outcome variable, price per mg (ppm). We next examine the distribution of our outcome variable, ppm (price per mg). We can see that ppm spans a large range of values, from \$0.00025/mg to \$40/mg. We note from the below histogram that the distribution is highly right-skewed. To satisfy the conditional distribution assumption, we want to aim for ppm to be normally distributed and symmetric. This of course only examines the marginal distribution of ppm, but the idea is that this may carry over into the conditional distribution, which we examine after the model fitting process.
 
 We choose to do a log transformation of ppm. We can see in the below plot that the histogram of log(ppm) is relatively normally distributed and symmetric. Using a log transformation is a good choice as well because our raw data ppm observation are all greater than 0, and log transformations are still interpretable, which is important in this case study. 
 
@@ -548,6 +558,7 @@ streetrx %>%
 
 # Model Building and Selection
 
+<<<<<<< HEAD
 **I do not have much information about what the best model should be, given that we are still in early EDA. Nevertheless, a priori I have some preference on what to use / what not to use.**
 
 1) Grouping variable
@@ -563,24 +574,15 @@ State: $s$.
 $$y_{is} = \mu + \alpha_{s} + \epsilon_{is}.$$
 
 Where $y_{is}$ is the ppm for purchase $i$ in state $s$
+=======
 
+In this section, we expect to build a model that explains what factors affect the drug price and accounts for the uncertainty in the model. To simplify the modeling while still being able to interpret uncertainty, we decide to use a two phase process. First, we run an exhaustive search on a bunch of models, and select the one that has minimum BIC. Then, we run a frequentist / Bayesian hierarchical model to estimate the parameters, including the coefficients and the variances.
+>>>>>>> main
 
+## Model Selection
 
-See how much heterogeniety.
-
-*May compare the fitted variance of regional level means and state level means. If regional level means have larger variance, it might indicate a clustering effect within regions.*
-
-```{r}
-model_plain <- 
-  lmer(log(ppm) ~ 1 + (1 | state), data = streetrx, REML = F)
-summary(model_plain)$AICtab
-```
-
-3) Adding predictors
-
-Criterion: BIC(?) for Bayesian predictor selection.
-
-We do an exhaustive search.
+We have decided to include a random intercept for `state`, and the list of covariates is restricted within `year`, `mgstr`, `bulk_purchase` and `source`. We consider all main effects and two-way interactions, which gives $2^10 = 1024$ models to select from. Actually, there are not as much models that have good interpretability, e.g., the models that include a two-way interaction but exclude the corresponding main effects. Therefore, we fit all 1024 models, but select one model with the smallest BIC among all the models
+that include all main effects where a two-way interaction exists.
 
 ```{r}
 exhaustive_search <- function(raw_model, vars, data, REML = F) {
@@ -611,17 +613,7 @@ exhaustive_search <- function(raw_model, vars, data, REML = F) {
 }
 ```
 
-
-```{r}
-ex_result <- exhaustive_search(
-  raw_model <- log(ppm) ~ (1 | state),
-  vars = c("year", "mgstr", "bulk_purchase", "source"),
-  data = streetrx,
-  REML = F
-)
-```
-
-```{r, message = F}
+```{r, message = F, echo = F}
 ex_result_int <- exhaustive_search(
   raw_model <- log(ppm) ~ (1 | state),
   vars = c("year", "mgstr", "bulk_purchase", "source", 
@@ -632,15 +624,7 @@ ex_result_int <- exhaustive_search(
 )
 ```
 
-```{r}
-ex_result %>% arrange(BIC) %>%
-  select(1, 3) %>%
-  kbl(caption = "Exhaustive search of fixed effects using BIC") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
-
-```
-
-```{r}
+```{r, echo = F}
 ex_result_int %>% arrange(BIC) %>% head(10) %>%
   select(1, 3) %>%
   kbl(caption = "Exhaustive search of fixed effects using BIC") %>%
@@ -652,38 +636,39 @@ Our best model is
 
 $$
 \begin{aligned}
-y_{is} = \mu &+ \alpha_{s} + \beta_1I(mgstr_{is} = 10) + \beta_2I(mgstr_{is} = 40) + \beta_3I(bulkp_{is} = 1) \\
-&+ \beta_4I(source_{is} = internet) + \beta_4I(source_{is} = personal) + \epsilon_{is}
+y_{is} = \mu &+ \alpha_{s} + \beta_1\mathbb{I}(\mathrm{mgstr}_{is} = 10) + \beta_2\mathbb{I}(\mathrm{mgstr}_{is} = 40) + \beta_3\mathbb{I}(\mathrm{bulkp}_{is} = 1) \\
+&+ \beta_4\mathbb{I}(\mathrm{source}_{is} = \mathrm{internet}) + \beta_4\mathbb{I}(\mathrm{source}_{is} = \mathrm{personal}) + \epsilon_{is},
 \end{aligned}
 $$
 
 $$
 \begin{aligned}
-\alpha_s &\sim Normal(0, \tau^2) \\
-\epsilon_{is} &\sim Normal(0, \sigma^2)
+\alpha_s &\stackrel{iid}{\sim} \mathrm{Normal}(0, \tau^2), \\
+\epsilon_{is} &\stackrel{iid}{\sim} \mathrm{Normal}(0, \sigma^2),
 \end{aligned}
 $$
+where $y_{is}$ is the ppm for purchase $i$ in state $s$, and $\mathrm{mgstr}_{is}$, $\mathrm{bulkp}_{is}$, and $\mathrm{source}_{is}$ are fixed effects.
 
-Where $y_{is}$ is the ppm for purchase $i$ in state $s$
-
-And $mgstr_{is}$, $bulkp_{is}$, and $source_{is}$ are fixed effects
-
-
+Fitting the model with frequenst MLE, we have the following results.
 ```{r}
-best_model <- ex_result %>% arrange(BIC) %>% .[1, "model"]
+best_model <- ex_result_int %>% arrange(BIC) %>% .[1, "model"]
 res <- lmer(as.formula(best_model), REML = F, data = streetrx)
 summary(res)
 ```
 
+
+Now we impose a prior on the parameters and fit the model using a Bayesian approach. Since we do not have much information about the model, we use non-informative priors:
+$$\beta_j \stackrel{iid}{\sim}\mathrm{Normal}(0,1), \tau_^2 \sim \mathrm{InvGamma}(0.1, 0.1), \sigma_^2 \sim \mathrm{InvGamma}(0.1, 0.1).$$
 ```{r, message = F}
 priors <- c(
   set_prior("normal(0, 1)", class = 'b'),
   set_prior("inv_gamma(0.1, 0.1)", class = "sd", group = "state"),
   set_prior("inv_gamma(0.1, 0.1)", class = 'sd')
 )
-bayes_result <- brm(as.formula(best_model), data = streetrx, prior = priors,
-                    verbose = F, refresh = 0)
+(bayes_result <- brm(as.formula(best_model), data = streetrx, prior = priors,
+                    verbose = F, refresh = 0))
 ```
+
 One can see that the results given by Bayesian setting is almost the same is that from the frequentist setting.
 
 Posterior checks:
