@@ -681,8 +681,9 @@ state_rand <- as.character(state_rand)
 
 streetrx %>%
   filter(state %in% c(state_rand)) %>%
-  ggplot(., aes(x = year, y = log(ppm))) + 
-  geom_point() + 
+  ggplot(., aes(x = log(ppm), y = as.factor(year))) + 
+  geom_boxplot() + 
+  coord_flip() +
   facet_wrap(~state) + 
   labs(title = "Distribution of log(ppm) by year and 8 random states")
 ```
