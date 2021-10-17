@@ -1,43 +1,27 @@
 ---
 title: "Case Study 1"
-author: "Marc Brooks, Bo Liu, Shirley Mathur, Aasha Reddy"
+author: "Marc Brooks (Presenter), Bo Liu (Programmer), Shirley Mathur (Writer), Aasha Reddy (Checker and Coordinator)"
 date: "10/6/2021"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
+                      fig.align = 'center')
 ```
 
+10/17 Meeting, things to discuss
+- should we move the Cooks distance to the appendix?
+- discussion of qq plot is needed
+- should we interpret the Bayesian model?
+- Current bayesian model does not use the results from the frequentist model, does it?
+- Model building section - only include the ex_result_int table? 
+- finish data cleaning section writing
+- finish model building section writing
+- Need to make a code appendix once the report is completely finalized 
 
-To do:
-
-Data cleaning (Shirley)
-* Delete levels of mgstr that are not 5, 10, 40
-* Delete year = 1969 
-* Don't use missing data - ignore
-* combine source into internet (categorical)
-
-
-EDA (Marc)
-* boxplot for source 
-* check for interactions
-* (wait until after presetnation) check for random slopes using EDA - choose 5 random states
-
-Modeling (Bo)
-* Don't use city 
-* Group by state - log of ppm distribution is very similar across regions. Compare across region variances to within region variances - if it within is smaller means are more liekly to be the same. 
-* use stepwise selection with BIC - start with base model and add covariates one by one. Exhaustive search (16)
-* start with base model of only random intercepts (don't think about random slopes until after presetnation)
-* primary_reason drop this variable - make a boxplot to see if log ppm distribution is different for price. From Mark's plot it doesn't look like they are different, so we can probably exclude this variable. Bo may explore this further - mention that if we had more time we could look into this more. 
-* time - seasonality. Use quarter as a categorical variable. Maybe there is not a strong seasonal affect (looking at the boxplot). 
-* use year as numerical variable (continuous) to account for potential inflation. 
-* mgstr - include as a categorical 
-* bulk purchase - we will include
-* variables to include - log(ppm) ~ (1|state) + year + mgstr + bulk_purchase + source 
-* check 2 models - check with 2004 and 2000 and then without these years and see how much it changes
-
-Slides (Aasha)
 
 To do (10/15):
 - Data cleaning 
@@ -63,7 +47,7 @@ To do (10/15):
   - [Marc] Interpretation Report Writing
 
 
-```{r}
+```{r, warning=FALSE}
 library(tidyverse)
 library(lme4)
 library(rstan)
@@ -76,15 +60,13 @@ library(gridExtra)
 
 options(scipen = 0, digits = 4)
 ggplot2::theme_set(ggplot2::theme_bw())
-knitr::opts_chunk$set(
-  fig.align = 'center', fig.width=5, fig.height=3, echo = FALSE
-)
 ```
 
 
 ```{r}
 #load data
-load("streetrx.RData")
+# load("case_study_01/streetrx.RData")
+load("~/Statistics - Duke University/2021 Fall/STA 610 - Hierarchical Models/STA_610_groupwork/case_study_01/streetrx.RData")
 
 # GROUP 1 - METHADONE
 # filter data for only methadone
@@ -92,7 +74,7 @@ streetrx <- streetrx %>%
   filter(api_temp == "methadone")
 ```
 
-# Introduction, Data and Research Questions
+# Introduction
 
 Prescription opioid diversion and abuse are major public health issues, and street prices provide an indicator of drug availability, demand, and abuse potential. Using StreetRx data, we aim to investigate factors related to the price per mg of Methadone. 
 
@@ -100,9 +82,17 @@ StreetRx (streetrx.com) is a web-based citizen reporting tool enabling real-time
 
 Our goal is to investigate factors related to the price per mg of Methadone, accounting for potential clustering by location and exploring heterogeneity in pricing by location. Our data contains the following factors, and we will explore how the factors in the dataset are or are not associated with pricing per milligram. 
 
-## Questions:
+We first clean data and conduct exploratory data analysis (EDA) to assess any necessary transformations. We also conduct EDA to assess what type of model we should build, including which variables to include and to assess whether random intercepts or slopes would be helpful. We also use exhaustive search using BIC to perform variable selection. In our final model, we include random intercepts by state, and fixed effects for mgstr (), source (), and bulk_purchase (). We use estimates obtained from a frequentist version of the hierarchical model to inform priors for the final Bayesian version of the model. We find that _____. 
+
+## Research Questions:
 * Which variables are associated with pricing per milligram of Methadone? 
 * Is there heterogeneity in pricing of Methadone by location? 
+
+# Data and Cleaning
+
+We first examine missing data in the streetrx data. We substitute NA for all missing values. We see that some variables, such as ppm, city, source, mgstr and primary_reason have many missing values. For the purpose of our model, we will not use the primary_reason variable, as they contain the most missing observations. Source contains links to websites where individuals purchased the Methadone, which will not be helpful in the model. 
+
+We also note that individuals self-report their city, state, and country, so there are some data entry errors. For instance, some observations report purchased in "New York" vs. "New York Manhattan" vs. "New York City", which all refer to the same city. Thus, this variable may not be reliable as a grouping variable to explore heterogeneity within location. This is not an issue with State, so we choose to use state as our grouping variable. We also note that all purchases were made in the USA. 
 
 ```{r}
 # variable description table
@@ -127,29 +117,22 @@ Description = c("Price per mg (outcome of interest)",
 ",
 "primary reason for purchase"
 )) %>%
-  kbl(caption = "Variable Descriptions", 
-      position = "HOLD")
+  kable(caption = "Variable Descriptions") %>%
+  kable_styling(latex_options = "HOLD_position")
 ```
-
-
-# Exploratory Analysis and Cleaning
-
-We first examine missing data in the streetrx data. We substitute NA for all missing values. We see that some variables, such as ppm, city, source, mgstr and primary_reason have many missing values. For the purpose of our model, we will not use the source or primary_reason variable, as they contain the most missing observations. Source contains links to websites where individuals purchased the Methadone, which will not be helpful in the model. 
-
-We also note that individuals self-report their city, state, and country, so there are some data entry errors. For instance, some observations report purchased in "New York" vs. "New York Manhattan" vs. "New York City", which all refer to the same city. Thus, this variable may not be reliable as a grouping variable to explore heterogeneity within location. This is not an issue with State, so we choose to use state as our grouping variable. We also note that all purchases were made in the USA. 
 
 ```{r}
 # code missing data
 streetrx <- data.frame(apply(streetrx, 2, function(x) gsub("^$|^ $", NA, x)))
 
 # table of variables with missing data
-tibble(
-  Variable = names(streetrx), 
-  `Number Missing` = apply(streetrx, 2, function(x) sum(is.na(x))),
-  `Proportion Missing` = apply(streetrx, 2, function(x) mean(is.na(x)))
-) %>%
-  kbl(caption = "Number of observations missing per variable",
-    position = 'HOLD')
+# tibble(
+#   Variable = names(streetrx), 
+#   `Number Missing` = apply(streetrx, 2, function(x) sum(is.na(x))),
+#   `Proportion Missing` = apply(streetrx, 2, function(x) mean(is.na(x)))
+# ) %>%
+#   kable(caption = "Number of observations missing per variable") %>%
+#   kable_styling(latex_options = "HOLD_position")
 
 # code factors and numeric variables 
 streetrx <- streetrx %>%
@@ -201,68 +184,24 @@ streetrx <- streetrx %>%
   mutate(source = na_if(source, "None")) %>%
   mutate(source = as.factor(source))
 
+# remove states with 1 observation
+streetrx <- streetrx %>%
+  group_by(state) %>%
+  count() %>%
+  filter(n > 1) %>%
+  select(state) %>%
+  left_join(streetrx, by = "state")
 ```
 
-We next examine the distribution of our outcome variable, ppm (price per mg). We can see that ppm spans a large range of values, from \$0.00025/mg to \$40/mg. There are only 16 observations with a ppm > 10, and 3 with a ppm > 20. 
+# EDA
 
-```{r}
-ggplot(data = streetrx, aes(x = ppm)) + 
-  geom_histogram(color = "white", bins = 50) + 
-  labs(y = "", 
-       title = "Distribution of price per mg (ppm) \nof Methadone")
-```
+### Checking distribution of outcome variable (ppm)
 
-```{r}
-streetrx %>%
-  filter(ppm < 10) %>%
-ggplot(data = ., aes(x = ppm)) + 
-  geom_histogram(color = "white", bins = 50) + 
-  labs(y = "", 
-       title = "Distribution of price per mg (ppm) < 10 \nof Methadone")
-```
+We explore the data first by examining the distribution of our outcome variable, price per mg (ppm). We next examine the distribution of our outcome variable, ppm (price per mg). We can see that ppm spans a large range of values, from \$0.00025/mg to \$40/mg. We note from the below histogram that the distribution is highly right-skewed. To satisfy the conditional distribution assumption, we want to aim for ppm to be normally distributed and symmetric. This of course only examines the marginal distribution of ppm, but the idea is that this may carry over into the conditional distribution, which we examine after the model fitting process
 
-# Check for outliers
+We choose to do a log transformation of ppm. We can see in the below plot that the histogram of log(ppm) is relatively normally distributed and symmetric. Using a log transformation is a good choice as well because our raw data ppm observation are all greater than 0, and log transformations are still interpretable, which is important in this case study. 
 
-
-# Outline of things to do?
-** Discuss questions for Michael at OH tomorrow
-1) EDA/transformations/outliers
-2) Build frequentist model
-3) Model/variable selection/testing
-4) Bayesian model?
-5) conclusion 
-
-
-# Questions 
-* Do we have to use all variables in our model? For instance, source and primary reason do not seem helpful 
-* How should we incorporate the time aspect? Can we choose to not use these variables?
-* Should we choose our grouping variable to be state, since city has a lot of missing data?
-* We should consider outliers for ppm - what is an outlier?
-
----------------------
-Added by Bo
-
-1. Missing Values.
-
-Five variables have missing values - `ppm`, `mgstr`, `city`, `source` and `Primary_Reason`.
-
-Observations: 
-- `Primary_Reason` has almost 50\% missing data.
-- `source` and `city` has medium proportion of missing data.
-- `ppm` and `mgstr` are missing at the same time.
-
-What to do with these missing values?
-- `Primary_Reason`: maybe can combine to several categories.
-- `ppm` (12.65\%): outcome variable. Would hurt if the imputation is not reliable. **Suggestion: 1) discard missing observations - assume MCAR; 2) MI w/ sensitivity analysis; 3) test MI reliability first.**
-- `source` (37.61\%): maybe try categorical - `Personal`, `Internet`, `Heard`, `Other`.
-- `city` (33.24\%): basically can do nothing - delete.
-- `mgstr` (12.65\%): depend on how you treat `ppm`. If missing data in `ppm` are discarded, then there are no missingness in `mgstr`.
-
-2. Distribution of Variables
-
-1) outcome: `ppm`
-
-```{r}
+```{r, fig.height=2}
 ppm_hist1 <- streetrx %>%
   ggplot(aes(x = ppm, y = ..density..)) +
   geom_histogram(alpha = 0.4, fill=rainbow(30), bins=30, color = "black") +
@@ -272,417 +211,106 @@ ppm_hist2 <- streetrx %>%
   ggplot(aes(x = log(ppm), y = ..density..)) +
   geom_density(color = "black", adjust = 5) +
   geom_histogram(alpha = 0.4, fill=rainbow(20), bins=20, color = "black")
-  
-grid.arrange(ppm_hist1, ppm_hist2, ncol=2)
-```
 
-2) `mgstr`
+patchwork <- ppm_hist1 + ppm_hist2
 
-```{r}
-mgstr_hist1 <- streetrx %>%
-  ggplot(aes(x = mgstr)) +
-  geom_bar(alpha = 0.4)
-  
-mgstr_hist1
-```
-
-Only three main levels of `mgstr`: 5mg, 10mg and 40mg.
-
-```{r}
-streetrx %>% 
-  filter(!is.na(mgstr)) %>%
-  filter(!mgstr %in% c(5, 10, 40)) %>% 
-  pull(mgstr)
-```
-
-```{r}
-ggplot(streetrx, aes(x = factor(mgstr), y = log(ppm))) + 
-    geom_boxplot(aes(fill = factor(mgstr))) + 
-  labs(title = "Relationship between mgstr and log(ppm)", 
-       x = "mgstr") + 
-  theme(legend.position = "none")
+patchwork + plot_annotation(
+  title = "Distribution of ppm and log(ppm)")
 ```
 
 
-3) Dates
+### Assessing random intercepts 
 
-```{r}
-streetrx %>% 
+There are a few options for grouping variables for a random intercept. We exclude `city` as we noted previously that this field is highly erroneous. We assess both `state` and `region` as potential grouping variables by examining heterogeneity of log(ppm) among both states and regions. From the below plots, we can see that there is not much variation of log(ppm) by region, but there is some variation by state. Thus, we will include a random intercept by state in our model. 
+
+```{r, fig.height=4}
+rand_int_state = ggplot(streetrx, aes(x = state, y = log(ppm))) + 
+  geom_boxplot(aes(fill = factor(state)), outlier.size = 0.1) + 
+  labs(x = "State") + 
+  theme(legend.position = "none", 
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 7))
+
+rand_int_region = ggplot(streetrx, aes(x = USA_region, y = log(ppm))) + 
+  geom_boxplot(aes(fill = factor(USA_region)), outlier.size = 0.1) + 
+  labs(x = "Region") + 
+  theme(legend.position = "none", 
+                axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+patchwork = rand_int_state + rand_int_region + plot_layout(widths = c(5, 1))
+
+patchwork + plot_annotation(
+  title = "Log(ppm) by state and region")
+```
+
+
+### Assessing relationship of variables with log(ppm)
+
+We next assess relationships of variables in our dataset with log(ppm). This is useful to understand which variables may be most helpful to include as fixed effects in our model. We first examine year vs. log(ppm) and see that there is some evidence of a relationship. We also feel it is important to test for effects of year on log(ppm) to account for any potential inflation in the price of Methadone. Thus, we choose to include year as a fixed effect in our model selection process. We also note from the boxplot below that quarter does not seem to have variation by log(ppm), so we do not include this in our model. We wanted to consider this variable to account for any potential seasonality in the price of Methadone. 
+
+```{r, fig.height=2}
+ppm_year <- streetrx %>% 
   mutate(
     year = yq_pdate %/% 10, 
     quarter = yq_pdate %% 10
   ) %>%
+  filter(year > 2009) %>%
   ggplot(., aes(x = year, y = log(ppm))) +
-  geom_jitter() + 
-  labs(title = "Relationship between year and log(ppm)", 
-       x = "Year") + 
+  geom_jitter(size = 0.2) + 
+  labs(x = "Year") + 
   theme(legend.position = "none", 
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-```
 
+ppm_quarter <- streetrx %>% mutate(quarter = yq_pdate %% 10) %>%
+  ggplot(aes(fill = factor(quarter))) + 
+  geom_boxplot(aes(x = quarter, y = log(ppm), group = quarter), outlier.size = 0.1) + 
+  theme(legend.position = "none") + 
+  labs(x = "Quarter")
 
-```{r}
-streetrx %>% 
-  mutate(
-    year = yq_pdate %/% 10, 
-    quarter = yq_pdate %% 10
-  ) %>%
-  group_by(year) %>% 
-  summarize(n = n())
-```
+patchwork <- ppm_year + ppm_quarter + plot_layout(widths = c(2, 1))
 
-1969 seems to be erroneous.
-
-```{r}
-streetrx %>%
-  filter(year(price_date) != yq_pdate %/% 10)
-```
-
-```{r}
-streetrx %>%
-  filter((month(price_date) - 1) %/% 3 != yq_pdate %% 10 - 1)
-```
-
-
-Two dates are consistent.
-
-4) Geographical information
-
-```{r}
-ggplot(streetrx, aes(x = state, y = log(ppm))) + 
-  geom_boxplot(aes(fill = factor(state))) + 
-  labs(title = "Relationship between state and log(ppm)", 
-       x = "State") + 
-  theme(legend.position = "none", 
-        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-```
-
-```{r}
-ggplot(streetrx, aes(x = USA_region, y = log(ppm))) + 
-  geom_boxplot(aes(fill = factor(USA_region))) + 
-  labs(title = "Relationship between region and log(ppm)", 
-       x = "Region") + 
-  theme(legend.position = "none")
-```
-
-```{r}
-streetrx %>% group_by(USA_region) %>% summarize(n = n())
-```
-
-```{r}
-streetrx %>% 
-  group_by(state) %>% 
-  summarize(n = n()) %>% 
-  arrange(desc(n))
-```
-
-Some states have very few observations - might be more stable to use a hierarchical model. **Think of whether to use regional information (another level of hierarchy)**
-
-5) `form_temp`
-
-```{r}
-streetrx %>% group_by(form_temp) %>% summarize(n = n())
-```
-
-```{r}
-streetrx %>% group_by(form_temp, is.na(mgstr)) %>% summarize(n = n())
-```
-
-**All syrup/liquid rows do not have `mgstr` values. Basically we do not have any outcome data for syrup/liquid drugs.**
-
-6) `bulk_purchase`
-
-```{r}
-streetrx %>% group_by(bulk_purchase) %>% summarize(n = n())
-```
-
-3. Association with outcome `ppm`
-
-1) `mgstr`
-
-```{r}
-ggplot(streetrx) +
-  geom_point(aes(x = mgstr, y = log(ppm))) +
-  geom_point(aes(x = mgstr, y = mean),
-             data = streetrx %>% 
-               group_by(mgstr) %>% 
-               summarize(mean = mean(log(ppm))),
-             color = "red"
+patchwork + plot_annotation(
+  title = "Log(ppm) by year and quarter"
 )
 ```
 
-Seems that there is a slight association.
 
-```{r}
-cor(streetrx$ppm, streetrx$mgstr, use = "complete.obs")
+We next assess the relationship of mgstr, bulk_purchase, and source by log(ppm) in the below boxplots. We see that all of these variables seem to have differences in log(ppm) by their respective levels, thus we choose to include mgstr, bulk_purchase, and source as fixed effects in our model selection process. 
+
+```{r, fig.height=3.5}
+mgstr_ppm <- ggplot(streetrx, aes(x = factor(mgstr), y = log(ppm))) + 
+    geom_boxplot(aes(fill = factor(mgstr)), outlier.size = 0.1) + 
+  labs(x = "mgstr") + 
+  theme(legend.position = "none") +
+  coord_flip()
+
+bp_ppm <- ggplot(streetrx, aes(x = bulk_purchase, y = log(ppm))) + 
+    geom_boxplot(aes(fill = bulk_purchase), outlier.size = 0.1) + 
+  labs(x = "Bulk Purchase") + 
+  theme(legend.position = "none") + 
+  coord_flip()
+
+source_ppm <- ggplot(streetrx, aes(x = source, y = log(ppm))) + 
+    geom_boxplot(aes(fill = source), outlier.size = 0.1) + 
+  labs(x = "Source") + 
+  theme(legend.position = "none") +
+  coord_flip()
+
+patchwork <- mgstr_ppm / bp_ppm / source_ppm
+
+patchwork + plot_annotation(
+  title = "Log(ppm) vs. mgstr, bulk purchase, and source")
 ```
 
-2) Dates
-
-```{r}
-streetrx %>% mutate(quarter = yq_pdate %% 10) %>%
-  ggplot() + 
-  geom_boxplot(aes(x = quarter, y = log(ppm), group = quarter))
-```
-
-```{r}
-streetrx %>% filter(yq_pdate >= 20000) %>%
-  mutate(year = yq_pdate %/% 10) %>%
-  ggplot() + 
-  geom_boxplot(aes(x = year, y = log(ppm), group = year))
-```
-
-```{r}
-streetrx %>% 
-  filter(yq_pdate >= 20000) %>%
-  mutate(days = difftime(price_date, '2000-01-01', units = "days")) %>%
-  ggplot() +
-  geom_point(aes(x = days, y = log(ppm)))
-```
-
-```{r}
-streetrx %>% 
-  filter(yq_pdate >= 20090) %>%
-  mutate(days = difftime(price_date, '2000-01-01', units = "days")) %>%
-  ggplot() +
-  geom_point(aes(x = days, y = log(ppm)))
-```
-
-3) Geographical information
-
-```{r}
-ggplot(streetrx) +
-  geom_boxplot(aes(x = USA_region, y = log(ppm)))
-```
-
-```{r}
-ggplot(streetrx) +
-  geom_boxplot(aes(x = state, y = log(ppm)))
-```
-
-4) `bulk_purchase`
-
-```{r}
-ggplot(streetrx, aes(x = bulk_purchase, y = log(ppm))) + 
-    geom_boxplot(aes(fill = bulk_purchase)) + 
-  labs(title = "Relationship between bulk_purchase and log(ppm)", 
-       x = "Bulk Purchase") + 
-  theme(legend.position = "none")
-```
-
-5) `source` and `Primary_Reason`
-
-```{r}
-ggplot(streetrx, aes(x = source, y = log(ppm))) + 
-    geom_boxplot(aes(fill = source)) + 
-  labs(title = "Relationship between source and log(ppm)", 
-       x = "Source") + 
-  theme(legend.position = "none")
-```
+We note that form_temp (formulation of the drug as pill, patch, etc.) is always pill for Methadone, so we do not consider it as a potential variable in our model. The last variable in our dataset is primary reason for the purchase of Methadone. We note in the data cleaning section that this variable contains many missing observations, so we choose to exclude it. 
 
 
-**Depend on how we discuss to deal with these variables.**
+### Assessing Random Slopes
 
-4. Detecting Interaction Effects
+We next assess whether random slopes of our chosen variables by state would be useful. We note that we only have one continuous variable, year. In the below plots, we do not examine the trend of variables by all states. Instead, we filter for states with larger than 30 observations, and then choose a random sample of 8 states. 
 
-1.) `bulk_purchase` and `mgstr`
+We first examine the trend of the relationship of year with log(ppm) across 8 random states. We see that there is no distinguishable difference so we choose not to include a random slope of year by state. 
 
-The following boxplot does reveal some slight variance in the effect of `bulk_purchace` 
-on `log(ppm)` across values of `mgstr`.
-
-```{r}
-ggplot(streetrx) + 
-  geom_boxplot(aes(x = bulk_purchase, y = log(ppm))) +
-  facet_wrap(~mgstr)
-```
-2.) `source` and `mgstr`
-
-The following boxplot does reveal some slight variance in the effect of `source` 
-on `log(ppm)` across different values of `mgstr`, though some of this effect 
-could be distorted by lack of observations within certain categories.
-
-```{r}
-ggplot(streetrx) + 
-  geom_boxplot(aes(x = source, y = log(ppm))) +
-  facet_wrap(~mgstr)
-```
-3.) `source` and `bulk_purchase`
-
-The follow boxplot does not show substantial evidence that the relationship
-between log(ppm) and bulk_purchace varies across source.
-
-```{r}
-ggplot(streetrx) + 
-  geom_boxplot(aes(x = bulk_purchase, y = log(ppm))) +
-  facet_wrap(~source)
-```
-
-4.) `bulk_purchase` and `quarter`
-
-From the boxplot it appears that the relationship between quarter and log(ppm) 
-changes slightly for different values of bulk_purchase.
-
-```{r}
-streetrx %>%
-  mutate(quarter = yq_pdate %% 10) %>%
-  ggplot(aes(x = as.factor(quarter), y = log(ppm))) +
-  geom_boxplot() +
-  facet_wrap(~ bulk_purchase)
-```
-
-5.) `mgstr` and `quarter`
-
-There is some evidence that the effect of quarter on log(ppm) changes with the 
-dosage unit.
-
-```{r}
-streetrx %>%
-  mutate(quarter = yq_pdate %% 10) %>%
-  ggplot(aes(x = as.factor(quarter), y = log(ppm))) +
-  geom_boxplot() +
-  facet_wrap(~ mgstr)
-```
-
-6.) `source` and `quarter`
-
-We do not see strong evidence that the relationship between quarter and log(ppm) 
-changes across source.
-
-```{r}
-streetrx %>%
-  mutate(quarter = yq_pdate %% 10) %>%
-  ggplot(aes(x = as.factor(quarter), y = log(ppm))) +
-  geom_boxplot() +
-  facet_wrap(~ source)
-```
-
-7.) Interactions between factor variables and year
-
-7.1) `mgstr`
-
-There is not strong evidence that `mgstr` effects the relationship between `year`
-and `log(ppm)`.
-
-```{r}
-streetrx %>% 
-  mutate(year = yq_pdate %/% 10) %>% 
-  ggplot(aes(x=year, y = log(ppm)))  +
-  geom_point() +
-  facet_wrap(~mgstr) + 
-  geom_smooth(method = "lm")  
-```
-
-```{r}
-streetrx %>% 
-  mutate(year = yq_pdate %/% 10) %>% 
-  filter(year > 2005) %>% 
-  ggplot(aes(x=year, y = log(ppm)))  +
-  geom_point() +
-  facet_wrap(~mgstr) + 
-  geom_smooth(method = "lm")  
-```
-7.2) `bulk_purchase`
-There is not strong evidence that `bulk_purchase` effects the relationship between `year`
-and `log(ppm)`.
-```{r}
-streetrx %>% 
-  mutate(year = yq_pdate %/% 10) %>% 
-  ggplot(aes(x=year, y = log(ppm)))  +
-  geom_point() +
-  facet_wrap(~bulk_purchase) + 
-  geom_smooth(method = "lm")  
-```
-
-
-```{r}
-streetrx %>% 
-  mutate(year = yq_pdate %/% 10) %>% 
-  filter(year > 2005) %>% 
-  ggplot(aes(x=year, y = log(ppm)))  +
-  geom_point() +
-  facet_wrap(~bulk_purchase) + 
-  geom_smooth(method = "lm")  
-```
-7.3) `source`
-There is not strong evidence that `source` effects the relationship between `year`
-and `log(ppm)`.
-```{r}
-streetrx %>% 
-  mutate(year = yq_pdate %/% 10) %>% 
-  ggplot(aes(x=year, y = log(ppm)))  +
-  geom_point() +
-  facet_wrap(~source) + 
-  geom_smooth(method = "lm")  
-```
-
-
-```{r}
-streetrx %>% 
-  mutate(year = yq_pdate %/% 10) %>% 
-  filter(year > 2005) %>% 
-  ggplot(aes(x=year, y = log(ppm)))  +
-  geom_point() +
-  facet_wrap(~source) + 
-  geom_smooth(method = "lm")  
-```
-
-Outside of `mgstr` and `quarter`,  `bulk_purchase` and `quarter`, `source` and,
-and `mgstr` `bulk_purchase` and `mgstr` there was not strong evidence for other 
-interaction effects. Even for those listed above the evidence was not substantial 
-in our EDA, and some of the variation is likely due to a lack of observations
-for certain interaction terms.
-
-## EDA for Random slopes
-
-1) Mgstr and state
-
-```{r}
-set.seed(7)
-state_rand <- streetrx %>%
-  group_by(state) %>%
-  count() %>%
-  arrange(desc(n)) %>%
-  filter(n > 30) %>%
-  ungroup() %>%
-  sample_n(8) %>%
-  pull(state)
-
-state_rand <- as.character(state_rand)
-
-streetrx %>%
-  filter(state %in% c(state_rand)) %>%
-  ggplot(., aes(x = mgstr, y = log(ppm))) + 
-  geom_boxplot() + 
-  facet_wrap(~state) + 
-  labs(title = "Distribution of log(ppm) by mgstr and 8 random states")
-```
-
-2) source and state
-
-```{r}
-set.seed(0)
-state_rand <- streetrx %>%
-  group_by(state) %>%
-  count() %>%
-  arrange(desc(n)) %>%
-  filter(n > 30) %>%
-  ungroup() %>%
-  sample_n(8) %>%
-  pull(state)
-
-state_rand <- as.character(state_rand)
-
-streetrx %>%
-  filter(state %in% c(state_rand)) %>%
-  ggplot(., aes(x = source, y = log(ppm))) + 
-  geom_boxplot() + 
-  facet_wrap(~state) + 
-  labs(title = "Distribution of log(ppm) by source and 8 random states")
-```
-
-3) year and state
-
-```{r}
+```{r, fig.height=3}
 set.seed(7)
 state_rand <- streetrx %>%
   group_by(state) %>%
@@ -698,37 +326,227 @@ state_rand <- as.character(state_rand)
 streetrx %>%
   filter(state %in% c(state_rand)) %>%
   ggplot(., aes(x = year, y = log(ppm))) + 
-  geom_point() + 
-  facet_wrap(~state) + 
-  labs(title = "Distribution of log(ppm) by year and 8 random states")
+  geom_jitter(size = 0.2) + 
+  facet_wrap(~state, ncol = 4) + 
+  labs(title = "Distribution of log(ppm) by year and 8 random states") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
-4) bulk_purchase and state
 
-```{r}
-set.seed(99)
-state_rand <- streetrx %>%
-  group_by(state) %>%
-  count() %>%
-  arrange(desc(n)) %>%
-  filter(n > 30) %>%
-  ungroup() %>%
-  sample_n(8) %>%
-  pull(state)
+We then examine differences in the levels of mgstr, source, and bulk_purchase vs. log(ppm) by state. We created boxplots of each level of mgstr, source, and bulk_purchase vs. log(ppm) by state and did not find evidence of any major difference between the levels of the factors vs. log(ppm) by state. Thus we choose not to include any random slopes in our model. The boxplots can be found in the appendix. 
 
-state_rand <- as.character(state_rand)
+
+### Interactions 
+
+Next we assess whether any interactions would be useful to include in our model. In our EDA, we examined plots of all 2-way interactions even though we do not include plots here. Outside of `mgstr` and `quarter`,  `bulk_purchase` and `quarter`, `source` and `mgstr`, and `bulk_purchase` and `mgstr` there was not strong evidence for other interaction effects. Even for those listed above the evidence was not substantial in our EDA, and some of the variation is likely due to a lack of observations for certain interaction terms. However, we test for inclusion of all 2-way interactions in our exhaustive search using BIC to make sure we capture any important interactions. 
+
+### Overall choices and next steps 
+
+Through EDA, we have made the decision to include a random intercept by state in our model selection process, as well as fixed effects for year, mgstr, bulk_purchase and source. We will proceed with using BIC using exhaustive search to choose the best combination of fixed effects and 2-way interactions.
+
+
+
+```{r, include=FALSE, fig.show="hide"}
+###### Extra Plots Fixed Effects ######################################
+
+###### MGSTR ######
+streetrx %>%
+  ggplot(aes(x = mgstr)) +
+  geom_bar(alpha = 0.4)
+
+# Only three main levels of `mgstr`: 5mg, 10mg and 40mg.
+streetrx %>% 
+  filter(!is.na(mgstr)) %>%
+  filter(!mgstr %in% c(5, 10, 40)) %>% 
+  pull(mgstr)
+
+ggplot(streetrx) +
+  geom_point(aes(x = mgstr, y = log(ppm))) +
+  geom_point(aes(x = mgstr, y = mean),
+             data = streetrx %>% 
+               group_by(mgstr) %>% 
+               summarize(mean = mean(log(ppm))),
+             color = "red"
+)
+
+# Seems that there is a slight association.
+# cor(streetrx$ppm, streetrx$mgstr, use = "complete.obs")
+
+
+###### DATES ######
+streetrx %>% 
+  mutate(
+    year = yq_pdate %/% 10, 
+    quarter = yq_pdate %% 10
+  ) %>%
+  group_by(year) %>% 
+  summarize(n = n())
+
+# 1969 seems to be erroneous
+streetrx %>%
+  filter(year(price_date) != yq_pdate %/% 10)
 
 streetrx %>%
-  filter(state %in% c(state_rand)) %>%
-  ggplot(., aes(x = bulk_purchase, y = log(ppm))) + 
-  geom_boxplot() + 
-  facet_wrap(~state) + 
-  labs(title = "Distribution of log(ppm) by bulk_purchase \nand 8 random states") + 
-  coord_flip()
+  filter((month(price_date) - 1) %/% 3 != yq_pdate %% 10 - 1)
+
+# two dates are consistent
+
+streetrx %>% filter(yq_pdate >= 20000) %>%
+  mutate(year = yq_pdate %/% 10) %>%
+  ggplot() + 
+  geom_boxplot(aes(x = year, y = log(ppm), group = year))
+
+streetrx %>% 
+  filter(yq_pdate >= 20000) %>%
+  mutate(days = difftime(price_date, '2000-01-01', units = "days")) %>%
+  ggplot() +
+  geom_point(aes(x = days, y = log(ppm)))
+
+streetrx %>% 
+  filter(yq_pdate >= 20090) %>%
+  mutate(days = difftime(price_date, '2000-01-01', units = "days")) %>%
+  ggplot() +
+  geom_point(aes(x = days, y = log(ppm)))
+
+###### GEOGRAPHICAL INFORMATION ######
+
+ggplot(streetrx, aes(x = USA_region, y = log(ppm))) + 
+  geom_boxplot(aes(fill = factor(USA_region))) + 
+  labs(title = "Relationship between region and log(ppm)", 
+       x = "Region") + 
+  theme(legend.position = "none")
+
+streetrx %>% group_by(USA_region) %>% summarize(n = n())
+
+streetrx %>% 
+  group_by(state) %>% 
+  summarize(n = n()) %>% 
+  arrange(desc(n))
+
+###### form_temp ######
+streetrx %>% group_by(form_temp) %>% summarize(n = n())
+streetrx %>% group_by(form_temp, is.na(mgstr)) %>% summarize(n = n())
+# All syrup/liquid rows do not have `mgstr` values. Basically we do not have any outcome data for syrup/liquid drugs
+
+###### bulk_purchase ######
+streetrx %>% group_by(bulk_purchase) %>% summarize(n = n())
+
+```
+
+```{r, include=FALSE, fig.show="hide"}
+###### Extra Plots Interactions ######################################
+
+###### 1.) `bulk_purchase` and `mgstr` ######
+
+# The following boxplot does reveal some slight variance in the effect of `bulk_purchace` on `log(ppm)` across values of `mgstr`
+ggplot(streetrx) + 
+  geom_boxplot(aes(x = bulk_purchase, y = log(ppm))) +
+  facet_wrap(~mgstr)
+
+###### 2.) `source` and `mgstr` ######
+
+# The following boxplot does reveal some slight variance in the effect of `source` on `log(ppm)` across different values of `mgstr`, though some of this effect could be distorted by lack of observations within certain categories.
+ggplot(streetrx) + 
+  geom_boxplot(aes(x = source, y = log(ppm))) +
+  facet_wrap(~mgstr)
+
+###### 3.) `source` and `bulk_purchase` ######
+
+# The follow boxplot does not show substantial evidence that the relationship between log(ppm) and bulk_purchace varies across source.
+ggplot(streetrx) + 
+  geom_boxplot(aes(x = bulk_purchase, y = log(ppm))) +
+  facet_wrap(~source)
+
+###### 4.) `bulk_purchase` and `quarter` ######
+
+# From the boxplot it appears that the relationship between quarter and log(ppm)changes slightly for different values of bulk_purchase.
+streetrx %>%
+  mutate(quarter = yq_pdate %% 10) %>%
+  ggplot(aes(x = as.factor(quarter), y = log(ppm))) +
+  geom_boxplot() +
+  facet_wrap(~ bulk_purchase)
+
+###### 5.) `mgstr` and `quarter` #####
+
+# There is some evidence that the effect of quarter on log(ppm) changes with thedosage unit.
+streetrx %>%
+  mutate(quarter = yq_pdate %% 10) %>%
+  ggplot(aes(x = as.factor(quarter), y = log(ppm))) +
+  geom_boxplot() +
+  facet_wrap(~ mgstr)
+
+###### 6.) `source` and `quarter` ######
+
+# We do not see strong evidence that the relationship between quarter and log(ppm) changes across source.
+streetrx %>%
+  mutate(quarter = yq_pdate %% 10) %>%
+  ggplot(aes(x = as.factor(quarter), y = log(ppm))) +
+  geom_boxplot() +
+  facet_wrap(~ source)
+
+###### 7.) Interactions between factor variables and year
+
+###### 7.1) `mgstr` ######
+
+# There is not strong evidence that `mgstr` effects the relationship between `year` and `log(ppm)`.
+
+streetrx %>% 
+  mutate(year = yq_pdate %/% 10) %>% 
+  ggplot(aes(x=year, y = log(ppm)))  +
+  geom_point() +
+  facet_wrap(~mgstr) + 
+  geom_smooth(method = "lm")  
+
+streetrx %>% 
+  mutate(year = yq_pdate %/% 10) %>% 
+  filter(year > 2005) %>% 
+  ggplot(aes(x=year, y = log(ppm)))  +
+  geom_point() +
+  facet_wrap(~mgstr) + 
+  geom_smooth(method = "lm")  
+
+###### 7.2) `bulk_purchase` ######
+# There is not strong evidence that `bulk_purchase` effects the relationship between `year` and `log(ppm)`.
+streetrx %>% 
+  mutate(year = yq_pdate %/% 10) %>% 
+  ggplot(aes(x=year, y = log(ppm)))  +
+  geom_point() +
+  facet_wrap(~bulk_purchase) + 
+  geom_smooth(method = "lm")  
+
+
+streetrx %>% 
+  mutate(year = yq_pdate %/% 10) %>% 
+  filter(year > 2005) %>% 
+  ggplot(aes(x=year, y = log(ppm)))  +
+  geom_point() +
+  facet_wrap(~bulk_purchase) + 
+  geom_smooth(method = "lm") 
+
+###### 7.3) `source` ######
+
+# There is not strong evidence that `source` effects the relationship between `year` and `log(ppm)`.
+streetrx %>% 
+  mutate(year = yq_pdate %/% 10) %>% 
+  ggplot(aes(x=year, y = log(ppm)))  +
+  geom_point() +
+  facet_wrap(~source) + 
+  geom_smooth(method = "lm")  
+
+streetrx %>% 
+  mutate(year = yq_pdate %/% 10) %>% 
+  filter(year > 2005) %>% 
+  ggplot(aes(x=year, y = log(ppm)))  +
+  geom_point() +
+  facet_wrap(~source) + 
+  geom_smooth(method = "lm")  
+
+# Outside of `mgstr` and `quarter`,  `bulk_purchase` and `quarter`, `source` and, and `mgstr` `bulk_purchase` and `mgstr` there was not strong evidence for other interaction effects. Even for those listed above the evidence was not substantial in our EDA, and some of the variation is likely due to a lack of observations for certain interaction terms.
 ```
 
 
-5. Model
+
+# Model Building and Selection
 
 **I do not have much information about what the best model should be, given that we are still in early EDA. Nevertheless, a priori I have some preference on what to use / what not to use.**
 
@@ -793,10 +611,6 @@ exhaustive_search <- function(raw_model, vars, data, REML = F) {
 }
 ```
 
-```{r}
-
-```
-
 
 ```{r}
 ex_result <- exhaustive_search(
@@ -837,12 +651,18 @@ ex_result_int %>% arrange(BIC) %>% head(10) %>%
 Our best model is
 
 $$
-y_{is} = \mu + \alpha_{s} + \beta_1I(mgstr_{is} = 10) + \beta_2I(mgstr_{is} = 40) + \beta_3I(bulkp_{is} = 1) + \beta_4I(source_{is} = internet) + \beta_4I(source_{is} = personal) + \epsilon_{is}
+\begin{aligned}
+y_{is} = \mu &+ \alpha_{s} + \beta_1I(mgstr_{is} = 10) + \beta_2I(mgstr_{is} = 40) + \beta_3I(bulkp_{is} = 1) \\
+&+ \beta_4I(source_{is} = internet) + \beta_4I(source_{is} = personal) + \epsilon_{is}
+\end{aligned}
 $$
 
-$\alpha_s \sim Normal(\0, \tau^2)$
-
-$\epsilon_{is} \sim Normal(0, \sigma^2)$ 
+$$
+\begin{aligned}
+\alpha_s &\sim Normal(0, \tau^2) \\
+\epsilon_{is} &\sim Normal(0, \sigma^2)
+\end{aligned}
+$$
 
 Where $y_{is}$ is the ppm for purchase $i$ in state $s$
 
@@ -885,7 +705,40 @@ p2 <- ggplot() +
 p1 + p2
 ```
 
+# Interpretation of results
+
 Result plots:
+
+### Fixed effects
+```{r}
+coef(summary(res)) %>%
+  knitr::kable(caption = "Fixed effect estimates") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                latex_options = "HOLD_position")
+```
+
+
+As we took the log of our response ppm, we must exponentiate our estimates in order to interpret the effect of each variable on `ppm`. The following results are:
+
+* Grand mean: Our estimated grand mean for `ppm` is 1.21. This is the average 
+price per mg of methadone across all states for dosages of 50mg, cases where the purchase was heard of, 
+and non bulk purchases.    
+
+* `mgstr`: On average, we expect a decrease in dosage from 
+50 mg to 10 mg to result in a 35.24% decrease in price and decrease from 50 mg 
+to 40 mg to yield a 56.13% decrease in price.   
+
+* `bulk_puchase`: On average bulk purchases are 12.41% cheaper, in terms of price per mg, 
+than non bulk purchases.
+
+* `source`: Purchases that were personally reported are on average 10% less
+price per mg than purchases that had been heard second hand, while we expect a purchase that was discovered through the internet to be 33% less price per mg than a purchase that had been heard second hand.
+
+
+### Random effects
+
+The following illustrates the sorted estimated random state intercepts with 
+95% confidence intervals.
 
 ```{r}
 # dotplot
@@ -893,18 +746,148 @@ library(lattice)
 dotplot(ranef(res, condVar = TRUE))$state
 ```
 
-```{r}
-coef(summary(res)) %>%
-  kbl(caption = "Fixed effect estimates") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
-```
+Overall the plot demonstrates significant heterogeneity across states in the baseline ppm of methadone for purchases that were in bulk and that had been reported by word of mouth. Three states, California, Missouri, and Arizona, do not contain 0 in their 95% confidence interval, implying a significant difference in their baseline ppm and the grand 
+mean across all states. The plot also shows that the largest estimate was for Tennessee, 14.8% 
+increase from the grand mean, while the smallest estimate was for California, a 18.13% decrease
+from the grand mean. 
+
 
 ```{r}
 as.data.frame(VarCorr(res)) %>%
   select(1, 4) %>%
   rename(var = vcov) %>%
-  kbl(caption = "Variance estimates") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+  knitr::kable(caption = "Variance estimates") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                latex_options = "HOLD_position")
 ```
 
+Our across state variance of ppm is fairly small at 0.0124 while the within state variance remains large at 0.6548. Clearly, there is still a lot of within-group variance that our model is unable to explain.
+
+## Model Diagnostics (Influence of groups)   
+
+#### Cook's Distance
+
+Now that we have our final model we will perform, model diagnostics to determine if there are influential groups that might be effecting our model assumptions. First we will look at the DFBETAS of each parameter for each state. Following this, we use Cook's distance as another criteria to determine if there are cases of influential states.    
+
+```{r}
+library(influence.ME)
+```
+
+```{r}
+best_model.inf <- influence(res, "state")
+cutoff <- 2/sqrt(length(unique(streetrx$state)))
+```
+
+
+```{r}
+dfbetas_inf <- round(dfbetas(best_model.inf), 4)
+above_cutoff <- apply(abs(dfbetas_inf) > cutoff, MARGIN = 1, any)
+dfbetas_inf[above_cutoff,] %>%
+  knitr::kable(caption = "Level of influences states have on single parameter estiamtes") %>% 
+  kable_styling(latex_options = "HOLD_position")
+
+```
+
+
+The above table contains the states such that at least one parameter had a standardized difference in their estimate that exceeded our cutoff when excluding that state. Note that many of the states included have the largest sample sizes in the data set.  
+
+```{r, fig.height=15, fig.width=10}
+plot(best_model.inf,which="dfbetas",xlab="DFBETAS",ylab="State")
+```
+
+
+```{r, fig.height=7, fig.width=5}
+plot(best_model.inf,which="cook",cutoff=cutoff,
+sort=TRUE,xlab="Cook's D",ylab="State")
+```
+
+
+When examining Cook's distance, Texas is the only state that exceeds the cutoff and can be considered influential. This is not surprising as Texas had multiple parameters such that their DFBETAS exceeded the cutoff and Cook's distance is a summary measure of how an observation influences all parameter estimates. While, it seems Texas is an influence group we have yet to determine if it is an outlier. At the same time, Texas is has the third largest sample size in the data set and is an important data point in the analysis so it does not make sense to consider deleting this group.
+
+#### Normality
+
+
+
+# Appendix
+
+## Additional EDA
+
+### Assessment of Random Slopes
+
+```{r}
+set.seed(7)
+state_rand <- streetrx %>%
+  group_by(state) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  filter(n > 30) %>%
+  ungroup() %>%
+  sample_n(8) %>%
+  pull(state)
+
+state_rand <- as.character(state_rand)
+
+mgstr_rand_slope <- streetrx %>%
+  filter(state %in% c(state_rand)) %>%
+  ggplot(., aes(x = mgstr, y = log(ppm), fill = mgstr)) + 
+  geom_boxplot() + 
+  facet_wrap(~state, ncol = 4) + 
+  theme(legend.position = "none") + 
+  coord_flip()
+```
+
+
+```{r}
+set.seed(0)
+state_rand <- streetrx %>%
+  group_by(state) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  filter(n > 30) %>%
+  ungroup() %>%
+  sample_n(8) %>%
+  pull(state)
+
+state_rand <- as.character(state_rand)
+
+source_rand_slope <- streetrx %>%
+  filter(state %in% c(state_rand)) %>%
+  ggplot(., aes(x = source, y = log(ppm), fill = source)) + 
+  geom_boxplot() + 
+  facet_wrap(~state, ncol = 4) + 
+  theme(legend.position = "none") + 
+  coord_flip()
+```
+
+
+```{r}
+set.seed(99)
+state_rand <- streetrx %>%
+  group_by(state) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  filter(n > 30) %>%
+  ungroup() %>%
+  sample_n(8) %>%
+  pull(state)
+
+state_rand <- as.character(state_rand)
+
+bp_rand_slope <- streetrx %>%
+  filter(state %in% c(state_rand)) %>%
+  ggplot(., aes(x = bulk_purchase, y = log(ppm), fill = bulk_purchase)) + 
+  geom_boxplot() + 
+  facet_wrap(~state) + 
+  theme(legend.position = "none") + 
+  coord_flip()
+```
+
+```{r, fig.height=10}
+patchwork <- mgstr_rand_slope / source_rand_slope / bp_rand_slope
+
+patchwork + plot_annotation(
+  title = "Log(ppm) vs. mgstr, bulk purchase, and source by 8 random states",
+  subtitle = 'We do not observe difference in levels by state',
+)
+```
 
