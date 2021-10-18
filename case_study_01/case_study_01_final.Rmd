@@ -438,6 +438,10 @@ coef(summary(res)) %>%
 ```
 
 
+First, we note that each estimate in our model is significant with a 5% significance level.
+Therefore we have identified a relationship between `mgstr`, `bulk_purchase`, and `source` 
+and the price per mg of methadone. Below we interpret these relationships.
+
 As we took the log of our response ppm, we must exponentiate our estimates in order to interpret the effect of each variable on `ppm`. The following results are:
 
 * Grand mean: Our estimated grand mean for `ppm` is 1.21. This is the average 
