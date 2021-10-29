@@ -220,6 +220,26 @@ table(badgers$Signs_in_yard, badgers$farm_code_numeric)
 
 
 
+# Modeling 
 
+# unable to converge
+
+```{r}
+glmer(Signs_in_yard ~ No_active_setts_in_fields + factor(HayStraw) +
+        (1 + Year | farm_code_numeric), data = badgers, 
+      family = binomial(link = "logit"), 
+      control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 2e5)))
+```
+
+
+Bayesian model converges
+
+```{r}
+brm(Signs_in_yard ~ No_active_setts_in_fields + factor(HayStraw) +
+        (1 + Year | farm_code_numeric), 
+    data = badgers, 
+    family = binomial, 
+    control = list(adapt_delta = 0.95))
+```
 
 
