@@ -20,6 +20,7 @@ library(rstan)
 library(knitr)
 library(kableExtra)
 library(corrplot)
+library(cAIC4)
 ```
 
 
@@ -27,11 +28,6 @@ library(corrplot)
 # load data
 badgers <- read.csv("data/BadgersFarmSurveysNoNA.csv", sep = "")
 ```
-
-# Notes from Chengxin
-* Don't look at season or year of each farm (too much difference between the years)
-* response - activity of badgers (binary)
-* Don't need to do diagnostics/check model assupmtions 
 
 
 # Introduction and Data
@@ -41,12 +37,10 @@ Management of badgers on Welsh and British farms is a controversial topic. While
 We consider data from observational surveys of 36 farms over a period of three years. The data are available on Sakai under Resources, in the BadgersFarmSurveysNoNA.txt file. Each farm (identified by the variable farm_code_numeric) was observed up to eight times (once per season for a two year period). The primary outcome, Signs_in_yard, is whether badger activity (e.g., carcasses of their prey, badger feces, indications of digging) was present in the farmyard.
 
 ## Research questions
-* What factors relate to presence of badger activity in the farmyard?
-* Estimate the correlation over time in badger activity
-    - every farm was recorded at diff times, if we take farm as group level, correlation within each farm will be corr of obs in each farm over time - take the farm as group level and look at corr within each farm
-      - LOOK AT ICC (corr of obs within farm) - bc obs are already recorded over different times, this gives an idea of correlation over time of the response
-* farm-specific heterogeneity in the tendency to have badger activity.
-    - random intercept for farm
+
+1) What factors relate to presence of badger activity in the farmyard?
+2) farm-specific heterogeneity in the tendency to have badger activity
+3) Estimate the correlation over time in badger activity
 
 # EDA
 
@@ -59,14 +53,85 @@ table(badgers$Signs_in_yard)
 ```
 
 
-## Examine fixed effects
+## Research Question 1: Examine fixed effects
 
-We first note that we will not consider Season, time and survey, as each sample for each farm was taken at a different time point. Thus, the farm variable already accounts for a time effect. We would be unable to include all of these variables in our model since there would be multicollinearity. 
+Our first research question asks us to examine factors related to presence of badger activity in the farmyard. Thus, we use EDA to exmaine which fixed effects to include in our model. We first note that we will not consider Season, time and survey, as each sample for each farm was taken at a different time point. Thus, the farm variable already accounts for a time effect. We would be unable to include all of these variables in our model since there would be multicollinearity. 
 
-We examine plots of other predictors vs. our outcome (Signs_in_yard) to decide which variables we will consider in our model selection process (exhaustive search using BIC). We find the following variables show a difference between the counts of 0s and 1s in our outcome, and we consider them in our exhaustive search (see plots in appendix): no_setts_in_field, no_active_setts_in_field, no_cattle_cattle_in_buildings, accessible_feed__store_present, Hay straw, concentrates, Sugar beet, Molasses, accessible_feed_present, acessible_cattle_house_present, grass_silage, cereal_silage, cereal_grains
+We examine plots of other predictors vs. our outcome (Signs_in_yard) to decide which variables we will consider in our model selection process (exhaustive search using BIC). We find the following variables show a difference between the counts of 0s and 1s in our outcome, and we consider them in our exhaustive search (see plots in appendix): no_setts_in_field, no_active_setts_in_field, no_cattle_cattle_in_buildings, accessible_feed__store_present, Hay straw, concentrates, Sugar beet, Molasses. 
+
+We find that No_setts_in_fields is the most important variable with respect to our outcome, Signs_in_yard. 
 
 
-helpful
+## Research Question 2 and 3: Random intercept for farm
+
+Our 2nd research question asks us to examine farm-specific heterogeneity in the tendency to have badger activity. This points to including a random intercept for farm in our model. This also accounts for correlation over time in badger activity (research question 3), as each farm's measurements were taken at a different point in time. Since our ICC is relatively high, we find that badger activity is relatively correlated over time. 
+
+
+# Model selection and specification
+
+Next, We do step-wise selection using BIC, starting with the base model of the random intercept for farm, and a fixed effect for no_setts_in_fields as this variable appeared to be most important from EDA. Based on step-wise selection, we choose our final model to be the following (see test output in Appendix):
+
+
+$$
+logit(E(Y_{ij}|b_{i})) = X'_{ij}\beta + b_i
+$$
+$$
+b_i \sim N(0, \sigma^2)
+$$
+Where $Y_{ij}$ is the Signs_in_yard indicator for observation $j$ in farm $i$ (random intercept indexed by $i$). In $X'$, we have 2 columns, one for the intercept and one for our fixed effect No_setts_in_field. 
+
+
+# Interpretation and Results 
+
+### Research Question 1: Fixed Effects
+
+Our first research question asks us to examine factors related to the presence of badger activity in the farmyard. Through step-wise selection using BIC, we find that the model with only No_setts_in_fields led to the lowest BIC. The below table shows the estimates of the fixed effects on a logit scale, which we can interpret on the odds by exponentiating as follows: 
+
+* For a 1 unit increase in the number of setts in the field, we expect the odds of the presence of signs in the farmyard to increase by 45% (exp(0.37) = 1.45).
+* Intercept: In the absence of any settlements in the field, we expect the odds of the presence of signs in the farmyard to decrease by 99% (exp(-5.03) = 0.007).
+
+```{r}
+coef(summary(m1)) %>%
+  knitr::kable(caption = "Fixed effect estimates on logit scale", 
+               digits = 2) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                latex_options = "HOLD_position")
+```
+
+### Research Question 2: Random Intercept
+
+```{r, fig.height=5}
+# dotplot
+library(lattice)
+dotplot(ranef(m1, condVar = TRUE), font.size = 5, rotate = TRUE)$farm_code_numeric
+```
+
+Our research question 2 asks us to examine farm-specific heterogeneity, so we can examine our random intercept for farm. From the dotplot, we see that there are some differences across the farms. However, even though there are differences, the confidence intervals are pretty wide. This could be due to small sample sizes, though some confidence intervals do not include 0. 
+
+```{r}
+as.data.frame(VarCorr(m1)) %>%
+  select(1, 4) %>%
+  rename(var = vcov) %>%
+  knitr::kable(caption = "Variance estimates") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                latex_options = "HOLD_position")
+```
+
+### Research Question 3: ICC
+
+The 3rd research question asks us to estimate the correlation over time in badger activity, and we thus examine the ICC. We find that our ICC is ~0.6, which measures the correlation of observations within each farm. This also accounts for correlation over time in badger activity, as each farm's measurements were taken at a different point in time. Since our ICC is relatively high, we find that badger activity is relatively correlated over time. 
+
+$$
+ICC = \frac{\sigma^2}{\sigma^2 + \frac{\pi^2}{3}} = 0.598
+$$
+
+
+# Appendix 
+
+# Plot Appendix
+
+## EDA 
+
 ```{r}
 # No setts in field
 ggplot(badgers, aes(x = as.factor(Signs_in_yard), y = No_setts_in_fields, fill = Signs_in_yard)) + 
@@ -76,7 +141,7 @@ ggplot(badgers, aes(x = as.factor(Signs_in_yard), y = No_setts_in_fields, fill =
        title = "Signs_in_yard vs. No_setts_in_fields")
 ```
 
-helpful
+
 ```{r}
 # No active setts in fields
 ggplot(badgers, aes(x = as.factor(Signs_in_yard), y = No_active_setts_in_fields, fill = Signs_in_yard)) + 
@@ -95,7 +160,7 @@ ggplot(badgers, aes(x = as.factor(Signs_in_yard), y = No_buildings, fill = Signs
        title = "Signs_in_yard vs. No_buildings")
 ```
 
-helpful
+
 ```{r}
 # No_cattle_in_buidlings_yard
 ggplot(badgers, aes(x = as.factor(Signs_in_yard), y = No_cattle_in_buidlings_yard, fill = Signs_in_yard)) +
@@ -136,7 +201,7 @@ prop.table(table(badgers$Signs_in_yard, badgers$Vegetables))
 prop.table(table(badgers$Signs_in_yard, badgers$Molasses))
 ```
 
-include
+
 ```{r}
 ggplot(badgers, aes(x = Accessible_feed_present, fill = as.factor(Signs_in_yard))) + 
   geom_bar(position = "fill") + 
@@ -144,7 +209,7 @@ ggplot(badgers, aes(x = Accessible_feed_present, fill = as.factor(Signs_in_yard)
   theme(legend.position="bottom")
 ```
 
-include
+
 ```{r}
 ggplot(badgers, aes(x = Accessible_cattle_house_present, fill = as.factor(Signs_in_yard))) + 
   geom_bar(position = "fill") + 
@@ -152,7 +217,7 @@ ggplot(badgers, aes(x = Accessible_cattle_house_present, fill = as.factor(Signs_
   theme(legend.position="bottom")
 ```
 
-helpful 
+ 
 ```{r}
 ggplot(badgers, aes(x = Accessible_feed_store_present, fill = as.factor(Signs_in_yard))) + 
   geom_bar(position = "fill") + 
@@ -174,7 +239,7 @@ ggplot(badgers, aes(x = Cereal_silage, fill = as.factor(Signs_in_yard))) +
   theme(legend.position="bottom")
 ```
 
-helpful
+
 ```{r}
 ggplot(badgers, aes(x = HayStraw, fill = as.factor(Signs_in_yard))) + 
   geom_bar(position = "fill") + 
@@ -189,7 +254,7 @@ ggplot(badgers, aes(x = Cereal_grains, fill = as.factor(Signs_in_yard))) +
   theme(legend.position="bottom")
 ```
 
-helpful
+
 ```{r}
 ggplot(badgers, aes(x = Concentrates, fill = as.factor(Signs_in_yard))) + 
   geom_bar(position = "fill") + 
@@ -205,7 +270,7 @@ ggplot(badgers, aes(x = Proteinblocks, fill = as.factor(Signs_in_yard))) +
   theme(legend.position="bottom")
 ```
 
-helpful
+
 ```{r}
 ggplot(badgers, aes(x = Sugarbeet, fill = as.factor(Signs_in_yard))) + 
   geom_bar(position = "fill") + 
@@ -221,7 +286,7 @@ ggplot(badgers, aes(x = Vegetables, fill = as.factor(Signs_in_yard))) +
   theme(legend.position="bottom")
 ```
 
-helpful
+
 ```{r}
 ggplot(badgers, aes(x = Molasses, fill = as.factor(Signs_in_yard))) + 
   geom_bar(position = "fill") + 
@@ -229,93 +294,69 @@ ggplot(badgers, aes(x = Molasses, fill = as.factor(Signs_in_yard))) +
   theme(legend.position="bottom")
 ```
 
+## Model selection (step-wise BIC)
 
-## Random intercept
+
 
 ```{r}
-# farm code numeric
-table(badgers$Signs_in_yard, badgers$farm_code_numeric)
-```
+# APPENDIX
 
-
-
-
-# Model selection 
-
-```{r}
-exhaustive_search <- function(raw_model, vars, data) {
-  y_name <- deparse(raw_model[[2]])
-  group_name <- deparse(raw_model[[3]])
-  id <- 0 : (2^length(vars) - 1)
-  construct_model <- function(.id){
-    subset <- (.id %/% 2^(0:(length(vars) - 1))) %% 2 == 1
-    if (all(subset == F)){
-      RHS <- paste0(c("1", group_name), collapse = ' + ')
-    }
-    else {
-      RHS <- paste0(c(vars[subset], group_name), collapse = ' + ')
-    }
-    paste(y_name, RHS, sep = ' ~ ')
-  }
-  run_model <- function(.id){
-    model_str <- construct_model(.id)
-    model_formula <- as.formula(model_str)
-    res <- glmer(model_formula, data = data,
-                 family = binomial(link = "logit"))
-    return (summary(res)$AICtab)
-  }
-  bind_cols(
-    model = sapply(id, construct_model),
-    as.data.frame(t(sapply(id, run_model)))
-  )
-}
-```
-
-```{r, message = F, echo = F}
-ex_result_int <- exhaustive_search(
-  raw_model = Signs_in_yard ~ (1 | farm_code_numeric),
-  vars = c("No_setts_in_fields",
-           "No_active_setts_in_fields",
-           "No_cattle_in_buidlings_yard", 
-           "Accessible_feed_store_present", 
-           "HayStraw", 
-           "Concentrates",
-           "Sugarbeet", "Molasses", 
-           "Accessible_feed_present", 
-           "Accessible_cattle_house_present", 
-           "Grass_silage", 
-           "Cereal_silage", 
-           "Cereal_grains"),
-  data = badgers
-)
-```
-
-
-```{r, echo = F}
-ex_result_int %>% arrange(BIC) %>% head(10) %>%
-  select(1, 3) %>%
-  kbl(caption = "Exhaustive search of fixed effects using BIC") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
-                latex_options = "HOLD_position")
-```
-# unable to converge
-
-```{r}
-m1 <- glmer(Signs_in_yard ~ No_active_setts_in_fields + factor(HayStraw) +
-        (1 | farm_code_numeric), data = badgers, 
+# BIC 167.5
+m1 <- glmer(Signs_in_yard ~ No_setts_in_fields + 
+              (1 | farm_code_numeric), data = badgers, 
       family = binomial(link = "logit"), 
       control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 2e5)))
+summary(m1)
+
+# BIC 172.2    
+m2 <- glmer(Signs_in_yard ~ No_setts_in_fields + No_active_setts_in_fields +
+              (1 | farm_code_numeric), data = badgers, 
+      family = binomial(link = "logit"), 
+      control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 2e5)))
+summary(m2)
+
+# BIC 171.2
+m3 <- glmer(Signs_in_yard ~ No_setts_in_fields + No_cattle_in_buidlings_yard +
+              (1 | farm_code_numeric), data = badgers, 
+      family = binomial(link = "logit"), 
+      control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 2e5)))
+summary(m3)
+
+# BIC 173.0    
+m4 <- glmer(Signs_in_yard ~ No_setts_in_fields + Accessible_feed_store_present +
+              (1 | farm_code_numeric), data = badgers, 
+      family = binomial(link = "logit"), 
+      control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 2e5)))
+summary(m4)
+
+# BIC 172.3
+m5 <- glmer(Signs_in_yard ~ No_setts_in_fields + HayStraw +
+              (1 | farm_code_numeric), data = badgers, 
+      family = binomial(link = "logit"), 
+      control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 2e5)))
+summary(m5)
+
+# BIC 173.1
+m6 <- glmer(Signs_in_yard ~ No_setts_in_fields + Concentrates +
+              (1 | farm_code_numeric), data = badgers, 
+      family = binomial(link = "logit"), 
+      control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 2e5)))
+summary(m6)
+
+# BIC 172.4
+m7 <- glmer(Signs_in_yard ~ No_setts_in_fields + Sugarbeet +
+              (1 | farm_code_numeric), data = badgers, 
+      family = binomial(link = "logit"), 
+      control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 2e5)))
+summary(m7)
+
+# BIC 173.1 
+m8 <- glmer(Signs_in_yard ~ No_setts_in_fields + Molasses +
+              (1 | farm_code_numeric), data = badgers, 
+      family = binomial(link = "logit"), 
+      control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 2e5)))
+summary(m8)
 ```
 
-
-Bayesian model converges
-
-```{r}
-brm(Signs_in_yard ~ No_active_setts_in_fields + factor(HayStraw) +
-        (1 + Year | farm_code_numeric), 
-    data = badgers, 
-    family = binomial, 
-    control = list(adapt_delta = 0.95))
-```
 
 
