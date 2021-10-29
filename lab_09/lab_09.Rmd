@@ -26,7 +26,7 @@ library(cAIC4)
 
 ```{r}
 # load data
-badgers <- read.csv("data/BadgersFarmSurveysNoNA.csv", sep = "")
+badgers <- read.csv("../data/BadgersFarmSurveysNoNA.csv", sep = "")
 ```
 
 
