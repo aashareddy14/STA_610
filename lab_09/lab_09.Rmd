@@ -59,7 +59,7 @@ We find that no_active_setts_in_fields is the most important variable with respe
 
 ```{r, fig.align='center'}
 # No setts in field
-setts <- ggplot(badgers, aes(x = as.factor(Signs_in_yard), y = No_active_setts_in_fields, fill = Signs_in_yard)) + 
+setts <- ggplot(badgers, aes(x = as.factor(Signs_in_yard), y = No_setts_in_fields, fill = Signs_in_yard)) + 
   geom_boxplot() + 
   theme(legend.position = "none") + 
   labs(x = "Signs in Yard")
@@ -116,6 +116,37 @@ patchwork <- (cattle_build + afsp + haystraw) / (conc + sugarbeet + molasses)
 patchwork + plot_annotation(
   title = "Signs_in_yard vs. other fixed effects")
 
+```
+
+```{r, fig.width = 5, fig.length = 8}
+names <- badgers %>% 
+  select(-Year, -Season, -farm_code_numeric, -Survey, -Signs_in_yard) %>%
+  colnames
+
+badgers %>% select(-Year, -Season, -farm_code_numeric, -Survey) %>%
+  pivot_longer(-Signs_in_yard) %>% 
+  mutate(name = factor(name, levels = names)) %>%
+  mutate(Signs_in_yard = as.factor(Signs_in_yard)) %>%
+  mutate(type = case_when(
+    name %in% c(
+      "No_active_setts_in_fields", "No_buildings",
+      "No_cattle_in_buidlings_yard", "No_setts_in_fields"
+    ) ~ "boxplot",
+    TRUE ~ "barplot"
+  )) %>%
+  ggplot() +
+  geom_boxplot(
+    aes(Signs_in_yard, value, group = Signs_in_yard),
+    data = ~subset(.x, type == "boxplot")
+  ) + 
+  geom_bar(
+    aes(x = Signs_in_yard, fill = as.factor(value)),
+    position = "fill",
+    data = ~subset(.x, type == "barplot")
+  ) +
+  facet_wrap(~name, scale = "free_y", ncol = 4) +
+  ylab("Value / Proportion") +
+  guides(fill=guide_legend(title="Value"))
 ```
 
 ## Research Question 2 and 3: Random intercept for farm
