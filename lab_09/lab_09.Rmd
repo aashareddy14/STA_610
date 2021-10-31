@@ -57,68 +57,7 @@ We examine plots of other predictors vs. our outcome (Signs_in_yard) to decide w
 
 We find that no_active_setts_in_fields is the most important variable with respect to our outcome, Signs_in_yard. 
 
-```{r, fig.align='center'}
-# No setts in field
-setts <- ggplot(badgers, aes(x = as.factor(Signs_in_yard), y = No_setts_in_fields, fill = Signs_in_yard)) + 
-  geom_boxplot() + 
-  theme(legend.position = "none") + 
-  labs(x = "Signs in Yard")
-
-# No active setts in fields
-act_setts <- ggplot(badgers, aes(x = as.factor(Signs_in_yard), y = No_active_setts_in_fields, fill = Signs_in_yard)) + 
-  geom_boxplot() + 
-  theme(legend.position = "none") + 
-  labs(x = "Signs in Yard")
-
-patchwork <- setts + act_setts
-
-patchwork + plot_annotation(
-  title = "Signs_in_yard vs. no. settlements and active settlements")
-
-```
-
-
-```{r}
-# No_cattle_in_buidlings_yard
-cattle_build <- ggplot(badgers, aes(x = as.factor(Signs_in_yard), y = No_cattle_in_buidlings_yard, fill = Signs_in_yard)) +
-  geom_boxplot() + 
-  theme(legend.position = "none") + 
-  labs(x = "Signs in Yard", 
-       title = "Signs_in_yard vs. No_cattle_in_buidlings_yard")
-
-afsp <- ggplot(badgers, aes(x = Accessible_feed_store_present, fill = as.factor(Signs_in_yard))) + 
-  geom_bar(position = "fill") + 
-  labs(title = "Accessible_feed_store_present vs. Signs_in_yard") + 
-  theme(legend.position="bottom")
-
-haystraw <- ggplot(badgers, aes(x = HayStraw, fill = as.factor(Signs_in_yard))) + 
-  geom_bar(position = "fill") + 
-  labs(title = "HayStraw vs. Signs_in_yard") + 
-  theme(legend.position="bottom")
-
-conc <- ggplot(badgers, aes(x = Concentrates, fill = as.factor(Signs_in_yard))) + 
-  geom_bar(position = "fill") + 
-  labs(title = "Concentrates vs. Signs_in_yard") + 
-  theme(legend.position="bottom")
-
-sugarbeet <- ggplot(badgers, aes(x = Sugarbeet, fill = as.factor(Signs_in_yard))) + 
-  geom_bar(position = "fill") + 
-  labs(title = "Sugarbeet vs. Signs_in_yard") + 
-  theme(legend.position="bottom")
-
-molasses <- ggplot(badgers, aes(x = Molasses, fill = as.factor(Signs_in_yard))) + 
-  geom_bar(position = "fill") + 
-  labs(title = "Molasses vs. Signs_in_yard") + 
-  theme(legend.position="bottom")
-
-patchwork <- (cattle_build + afsp + haystraw) / (conc + sugarbeet + molasses)
-
-patchwork + plot_annotation(
-  title = "Signs_in_yard vs. other fixed effects")
-
-```
-
-```{r, fig.width = 5, fig.length = 8}
+```{r, fig.width = 7, fig.height = 8, fig.align='center'}
 names <- badgers %>% 
   select(-Year, -Season, -farm_code_numeric, -Survey, -Signs_in_yard) %>%
   colnames
@@ -146,7 +85,9 @@ badgers %>% select(-Year, -Season, -farm_code_numeric, -Survey) %>%
   ) +
   facet_wrap(~name, scale = "free_y", ncol = 4) +
   ylab("Value / Proportion") +
-  guides(fill=guide_legend(title="Value"))
+  guides(fill=guide_legend(title="Value")) +
+  theme(strip.text.x = element_text(size = 6), 
+        legend.position = "bottom")
 ```
 
 ## Research Question 2 and 3: Random intercept for farm
@@ -194,7 +135,7 @@ coef(summary(m1)) %>%
 
 ### Research Question 2: Random Intercept
 
-```{r, fig.height=5}
+```{r, fig.height=6}
 # dotplot
 library(lattice)
 dotplot(ranef(m1, condVar = TRUE), font.size = 5, rotate = TRUE, 
