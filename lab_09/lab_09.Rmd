@@ -34,7 +34,8 @@ badgers <- read.csv("../data/BadgersFarmSurveysNoNA.csv", sep = "")
 
 Management of badgers on Welsh and British farms is a controversial topic. While some argue that culling badger populations is necessary to control the spread of bovine tuberculosis, others argue that badgers are not the major cause of the spread of disease and that culling is inhumane, especially when badger vaccination strategies are an option.
 
-We consider data from observational surveys of 36 farms over a period of three years. The data are available on Sakai under Resources, in the BadgersFarmSurveysNoNA.txt file. Each farm (identified by the variable farm_code_numeric) was observed up to eight times (once per season for a two year period). The primary outcome, Signs_in_yard, is whether badger activity (e.g., carcasses of their prey, badger feces, indications of digging) was present in the farmyard.
+We consider data from observational surveys of 36 farms over a period of three years. The data are available on Sakai under Resources, in the BadgersFarmSurveysNoNA.txt file. Each farm (identified by the variable `farm_code_numeric`) was observed up to eight times (once per season for a two year period). The primary outcome, `Signs_in_yard`, is whether badger activity (e.g., carcasses of their prey, badger feces, indications of digging) was present in the farmyard.
+
 
 ## Research questions
 
@@ -46,18 +47,19 @@ We consider data from observational surveys of 36 farms over a period of three y
 
 ## Examine outcome variable: signs_in_yard
 
-First we examine how many 0's and 1's are in the outcome variable, signs_in_yard. We see that there are 230 0's and 43 1's. 
+Our outcome variable, signs_in_yard, is binary. First we examine how many 0's and 1's are in the outcome variable, `Signs_in_yard` We see that there are 230 0's and 43 1's. 
 
 
 ## Research Question 1: Examine fixed effects
 
-Our first research question asks us to examine factors related to presence of badger activity in the farmyard. Thus, we use EDA to exmaine which fixed effects to include in our model. We first note that we will not consider Season, time and survey, as each sample for each farm was taken at a different time point. Thus, the farm variable already accounts for a time effect. We would be unable to include all of these variables in our model since there would be multicollinearity. 
 
-We examine plots of other predictors vs. our outcome (Signs_in_yard) to decide which variables we will consider in our model selection process (exhaustive search using BIC). We find the following variables show a difference between the counts of 0s and 1s in our outcome, and we consider them in our exhaustive search (see plots in appendix): no_setts_in_field, no_active_setts_in_field, no_cattle_cattle_in_buildings, accessible_feed__store_present, Hay straw, concentrates, Sugar beet, Molasses. 
+Our first research question asks us to examine factors related to presence of badger activity in the farmyard. Thus, we use EDA to examine which fixed effects to include in our model. We first note that we will not consider Season, time and survey, as each sample for each farm was taken at a different time point. Thus, the farm variable already accounts for a time effect. We would be unable to include all of these variables in our model since there would be multicollinearity. 
 
-We find that no_active_setts_in_fields is the most important variable with respect to our outcome, Signs_in_yard. 
+We examine plots of other predictors vs. our outcome (`Signs_in_yard`) to decide which variables we will consider in our model selection process (step-wise search using BIC). We find the following variables show a difference between the counts of 0s and 1s in our outcome, and we consider them in our step-wise search (see plots in appendix): `no_setts_in_field`, `no_active_setts_in_field`, `no_cattle_cattle_in_buildings`, `accessible_feed__store_present`, `HayStraw`, `Concentrates`, `Sugarbeet`, `Molasses.` 
 
-```{r, fig.width = 7, fig.height = 8, fig.align='center'}
+We find that `no_active_setts_in_fields` is the most important variable with respect to our outcome, `Signs_in_yard`. 
+
+```{r, fig.width = 6, fig.length = 8}
 names <- badgers %>% 
   select(-Year, -Season, -farm_code_numeric, -Survey, -Signs_in_yard) %>%
   colnames
@@ -97,7 +99,7 @@ Our 2nd research question asks us to examine farm-specific heterogeneity in the 
 
 # Model selection and specification
 
-Next, We do step-wise selection using BIC, starting with the base model of the random intercept for farm, and a fixed effect for no_active_setts_in_fields as this variable appeared to be most important from EDA. Based on step-wise selection, we choose our final model to be the following (see test output in Appendix):
+Next, We do step-wise selection using BIC, starting with the base model of the random intercept for farm, and a fixed effect for `no_active_setts_in_fields` as this variable appeared to be most important from EDA. Based on step-wise selection, we choose our final model to be the following (see test output in Appendix):
 
 
 $$
@@ -106,14 +108,14 @@ $$
 $$
 b_i \sim N(0, \sigma^2)
 $$
-Where $Y_{ij}$ is the Signs_in_yard indicator for observation $j$ in farm $i$ (random intercept indexed by $i$). In $X'$, we have 2 columns, one for the intercept and one for our fixed effect No_setts_in_field. 
+Where $Y_{ij}$ is the `Signs_in_yard` indicator for observation $j$ in farm $i$ (random intercept indexed by $i$). In $X'$, we have 2 columns, one for the intercept and one for our fixed effect `No_setts_in_field`. 
 
 
 # Interpretation and Results 
 
 ### Research Question 1: Fixed Effects
 
-Our first research question asks us to examine factors related to the presence of badger activity in the farmyard. Through step-wise selection using BIC, we find that the model with only No_setts_in_fields led to the lowest BIC. The below table shows the estimates of the fixed effects on a logit scale, which we can interpret on the odds by exponentiating as follows: 
+Our first research question asks us to examine factors related to the presence of badger activity in the farmyard. Through step-wise selection using BIC, we find that the model with only `No_setts_in_fields` led to the lowest BIC. The below table shows the estimates of the fixed effects on a logit scale, which we can interpret on the odds by exponentiating as follows: 
 
 * For a 1 unit increase in the number of active settlements in the field, we expect the odds of the presence of signs of badgers in the farmyard to increase by 45% (exp(0.37) = 1.45).
 * Intercept: In the absence of any settlements in the field, we expect the odds of the presence of signs of badgers in the farmyard to decrease by 99% (exp(-5.03) = 0.007).
