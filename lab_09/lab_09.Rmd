@@ -117,8 +117,8 @@ Where $Y_{ij}$ is the `Signs_in_yard` indicator for observation $j$ in farm $i$ 
 
 Our first research question asks us to examine factors related to the presence of badger activity in the farmyard. Through step-wise selection using BIC, we find that the model with only `No_active_setts_in_fields` led to the lowest BIC. The below table shows the estimates of the fixed effects on a logit scale, which we can interpret on the odds by exponentiating as follows: 
 
-	* For a 1 unit increase in the number of active settlements in the field, we expect the odds of the presence of signs of badgers in the farmyard to increase by 63% (exp(0.49) = 1.63).
-	* Intercept: In the absence of any settlements in the field, we expect the odds of the presence of signs of badgers in the farmyard to decrease by 99% (exp(-4.87) = 0.007).
+* For a 1 unit increase in the number of active settlements in the field, we expect the odds of the presence of signs of badgers in the farmyard to increase by 63% (exp(0.49) = 1.63).
+* Intercept: In the absence of any settlements in the field, we expect the odds of the presence of signs of badgers in the farmyard to decrease by 99% (exp(-4.87) = 0.007).
 
 
 ```{r}
@@ -145,7 +145,7 @@ dotplot(ranef(m1, condVar = TRUE), font.size = 5, rotate = TRUE,
         main = FALSE)$farm_code_numeric
 ```
 
-Our research question 2 asks us to examine farm-specific heterogeneity, so we can examine our random intercept for farm. From the dotplot, we see that there are some differences across the farms. However, even though there are differences, the confidence intervals are pretty wide. This could be due to small sample sizes, though some confidence intervals do not include 0. 
+Our research question 2 asks us to examine farm-specific heterogeneity, so we can examine our random intercept for farm. From the dotplot, we do see evidence of differences across the farms. However, even though there are differences, the confidence intervals are pretty wide. This could be due to small sample sizes, though some confidence intervals do not include 0. 
 
 ```{r}
 as.data.frame(VarCorr(m1)) %>%
