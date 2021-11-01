@@ -94,7 +94,7 @@ badgers %>% select(-Year, -Season, -farm_code_numeric, -Survey) %>%
 
 ## Research Question 2 and 3: Random intercept for farm
 
-Our 2nd research question asks us to examine farm-specific heterogeneity in the tendency to have badger activity. This points to including a random intercept for farm in our model. This also accounts for correlation over time in badger activity (research question 3), as each farm's measurements were taken at a different point in time. Since our ICC is relatively high, we find that badger activity is relatively correlated over time. 
+Our 2nd research question asks us to examine farm-specific heterogeneity in the tendency to have badger activity. This points to including a random intercept for farm in our model. This also accounts for correlation over time in badger activity (research question 3), as each farm's measurements were taken at a different point in time.  
 
 
 # Model selection and specification
@@ -115,13 +115,14 @@ Where $Y_{ij}$ is the `Signs_in_yard` indicator for observation $j$ in farm $i$ 
 
 ### Research Question 1: Fixed Effects
 
-Our first research question asks us to examine factors related to the presence of badger activity in the farmyard. Through step-wise selection using BIC, we find that the model with only `No_setts_in_fields` led to the lowest BIC. The below table shows the estimates of the fixed effects on a logit scale, which we can interpret on the odds by exponentiating as follows: 
+Our first research question asks us to examine factors related to the presence of badger activity in the farmyard. Through step-wise selection using BIC, we find that the model with only `No_active_setts_in_fields` led to the lowest BIC. The below table shows the estimates of the fixed effects on a logit scale, which we can interpret on the odds by exponentiating as follows: 
 
-* For a 1 unit increase in the number of active settlements in the field, we expect the odds of the presence of signs of badgers in the farmyard to increase by 45% (exp(0.37) = 1.45).
-* Intercept: In the absence of any settlements in the field, we expect the odds of the presence of signs of badgers in the farmyard to decrease by 99% (exp(-5.03) = 0.007).
+	* For a 1 unit increase in the number of active settlements in the field, we expect the odds of the presence of signs of badgers in the farmyard to increase by 63% (exp(0.49) = 1.63).
+	* Intercept: In the absence of any settlements in the field, we expect the odds of the presence of signs of badgers in the farmyard to decrease by 99% (exp(-4.87) = 0.007).
+
 
 ```{r}
-m1 <- glmer(Signs_in_yard ~ No_setts_in_fields + 
+m1 <- glmer(Signs_in_yard ~ No_active_setts_in_fields + 
               (1 | farm_code_numeric), data = badgers, 
       family = binomial(link = "logit"), 
       control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 2e5)))
@@ -156,11 +157,17 @@ as.data.frame(VarCorr(m1)) %>%
 ```
 
 ### Research Question 3: ICC
+	
+The 3rd research question asks us to estimate the correlation over time in badger activity, and we thus examine the ICC. We find that our ICC is 0.64, which measures the correlation of observations within each farm. This also accounts for correlation over time in badger activity, as each farm's measurements were taken at a different point in time. As such, this study is a kind of longitudinal study. Since our ICC is relatively high, we find that badger activity is relatively correlated over time. 
+	
+```{r, include=FALSE}
+5.957542/(5.957542 + ((3.14^2)/3))
+```
 
-The 3rd research question asks us to estimate the correlation over time in badger activity, and we thus examine the ICC. We find that our ICC is ~0.6, which measures the correlation of observations within each farm. This also accounts for correlation over time in badger activity, as each farm's measurements were taken at a different point in time. As such, this study is a kind of longitudinal study. Since our ICC is relatively high, we find that badger activity is relatively correlated over time. 
-
+	
+	
 $$
-ICC = \frac{\sigma^2}{\sigma^2 + \frac{\pi^2}{3}} = 0.598
+ICC = \frac{\sigma^2}{\sigma^2 + \frac{\pi^2}{3}} = 0.64
 $$
 
 
