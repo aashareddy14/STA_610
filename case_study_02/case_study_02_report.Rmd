@@ -1,0 +1,65 @@
+---
+title: "Case Study 2"
+author: "Marc Brooks (Checker), Bo Liu (Programmer), Shirley Mathur (Writer), Aasha Reddy (Presenter)"
+date: "11/2/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
+                      fig.align = 'center')
+```
+
+```{r, warning=FALSE}
+library(tidyverse)
+library(lme4)
+library(rstan)
+library(brms)
+library(knitr)
+library(kableExtra)
+library(patchwork)
+library(lubridate)
+library(gridExtra)
+library(influence.ME)
+
+options(scipen = 0, digits = 4)
+ggplot2::theme_set(ggplot2::theme_bw())
+```
+
+
+```{r}
+#load data
+registered <- read.delim("data/voter_stats_20201103.txt")
+voted <- read.delim("data/history_stats_20201103.txt")
+```
+
+# Introduction 
+
+The North Carolina State Board of Elections (NCSBE) is the agency charged with the administration of the elections process and campaign finance disclosure and compliance. Among other things, they provide voter registration and turnout data online. Our goal in this case study is to use the NC voter files for the general elections in November 2020 to identify/estimate how different groups voted in the 2020 elections (out of those registered).
+
+## Research Questions 
+
+* How did different demographic subgroups vote in the 2020 general elections? For example, how did the turnout for males compare to the turnout for females after controlling for other potential predictors?
+* Did the overall probability or odds of voting differ by county in 2020? Which counties differ the most from other counties?
+* How did the turnout rates differ between females and males for the different party affiliations?
+* How did the turnout rates differ between age groups for the different party affiliations?
+
+# Data and cleaning 
+
+We have two datasets that we will merge: voter_stats_20201103.txt contains information about the aggregate counts of registered voters by the demographic variables, and history_stats_20201103.txt contains information about the aggregate counts of voters who actually voted by the demographic variables. We first clean the data. 
+
+Our outcome variable of interest needs to be created. We are examining the turnout of voters, and we have counts of total registered voters in one dataset (we will call this dataset "registered"), and counts of people who actually voted in another dataset (we will call this dataset "voted"). 
+
+First, we note the variables we definitely would like to keep in our final dataset to answer our questions of interest. From the registered dataset, we would like to keep total registered voters. 
+
+We note that in the registered dataset, `precinct_abbrv` and `vtd_abbrv` will not be useful as they contain over 1000 factors each. `update_date` is also only NAs, so we will exclude that variable as well. We also will exclude `election_date` and `stats_type` as indicated in the prompt. 
+
+
+The variable `race_code` also has some missing data so we remove cases. 
+
+
+```{r}
+x <- registered %>%
+  rename(total_registered = total_voters)
+```
+
