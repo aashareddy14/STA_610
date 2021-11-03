@@ -66,8 +66,7 @@ Overall, in the voted dataset, we would like to keep the following variables: `c
 
 ```{r}
 v <- voted %>%
-  group_by(county_desc, age, party_cd, race_code, ethnic_code, sex_code, 
-           voting_method, voted_party_cd) %>%
+  group_by(county_desc, age, party_cd, race_code, ethnic_code, sex_code) %>%
   summarize(total_voters = sum(total_voters))
 
 r <- registered %>%
@@ -101,9 +100,10 @@ voted %>%
          ethnic_code == "NL", sex_code == "F", age == "Age 18 - 25")
 ```
 
-### Final dataset: 123,546 observations
+### Final dataset: 51,906 observations
 
 # EDA
+
 
 
 
