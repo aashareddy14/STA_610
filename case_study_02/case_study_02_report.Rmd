@@ -48,18 +48,20 @@ The North Carolina State Board of Elections (NCSBE) is the agency charged with t
 
 We have two datasets that we will merge: voter_stats_20201103.txt contains information about the aggregate counts of registered voters by the demographic variables, and history_stats_20201103.txt contains information about the aggregate counts of voters who actually voted by the demographic variables. We first clean the data. 
 
-Our outcome variable of interest needs to be created. We are examining the turnout of voters, and we have counts of total registered voters in one dataset (we will call this dataset "registered"), and counts of people who actually voted in another dataset (we will call this dataset "voted"). We will end up wanting one column for successes (number of people who actually voted), and one column for failures (number of people who did not vote, or total registered - # people who voted). 
+Our outcome variable of interest needs to be created. We are examining the turnout of voters, and we have counts of total registered voters in one dataset (we will call this dataset "registered"), and counts of people who actually voted in another dataset (we will call this dataset "voted"). We will end up wanting one column for successes (number of people who actually voted), and one column for total number of people who were elligible to vote (total registered). 
 
-First, we note the variables we definitely would like to keep in our final dataset to answer our questions of interest. From the registered dataset, we would like to keep total registered voters. From the voted dataset, we would like to keep `total voters`. We would also like to keep `sex_code`, `age`, and `county_desc` from both datasets. Additional variables of interest include `party_cd`, `race_code`, `ethnic_code` which appear in both datasets, so we can merge on these. From the voted dataset, we will also keep `voting_method` and `voted_party_cd`, but we will not merge on these variables since they do not appear in the registered dataset. We note that in the voted dataset, `voting_method` is exactly equal to `voting_method_desc`, so we delete `voting_method_desc`
+First, we note the variables we definitely would like to keep in our final dataset to answer our questions of interest. From the registered dataset, we would like to keep total registered voters. From the voted dataset, we would like to keep `total voters`. We would also like to keep `sex_code`, `age`, and `county_desc` from both datasets. Additional variables of interest include `party_cd`, `race_code`, `ethnic_code` which appear in both datasets, so we can merge on these. From the voted dataset, we will not keep `voting_method`, `voting_method_desc`, and `voted_party_cd` since they do not appear in the registered dataset.  
 
 We note that in the registered dataset, `precinct_abbrv` and `vtd_abbrv` will not be useful as they contain over 1000 factors each. `update_date` is also only NAs, so we will exclude that variable as well. We also will exclude `election_date` and `stats_type` as indicated in the prompt. 
 
 ```{r}
 registered <- registered %>%
-  rename(total_registered = total_voters)
+  rename(total_registered = total_voters) %>%
+  mutate(total_registered = as.numeric(total_registered))
 
 voted <- voted %>%
-  select(-voting_method_desc)
+  select(-voting_method_desc) %>%
+  mutate(total_voters = as.numeric(total_voters))
 ```
 
 Overall, in the voted dataset, we would like to keep the following variables: `county_desc`, `age`, `party_cd`, `race_code`, `ethnic_code`, `sex_code`, `total_voters`, `voting_method`, `voted_party_cd`, so we will aggregate to this level using a dplyr::group_by(). Overall, in the registered dataset, we would like to keep the following variables: `county_desc`, `party_cd`, `race_code`, `ethnic_code`, `sex_code`, `age`, `total_registered`, so we will again aggregate to this level using a dplyr::group_by(). After this, we can merge the datasets.
@@ -75,17 +77,34 @@ r <- registered %>%
 
 vote <- r %>%
   left_join(v, by = c("county_desc", "age", "party_cd", "race_code",
-                      "ethnic_code", "sex_code"))
+                      "ethnic_code", "sex_code")) %>%
+  mutate(total_registered = as.numeric(total_registered), 
+         total_voters = as.numeric(total_voters))
 
 ```
 
-We note that after merging, we have 6057 missing observations for voting_method, voted_party_cd, and total_voters. This is because there were demographic/geographic groups in registered dataset that did not exist in the voted dataset. Finally, we note that the `race_code` variable has some missing data (only 2 observations). 
+We note that after merging, we have 6057 missing observations for voting_method, voted_party_cd, and total_voters. This is because there were demographic/geographic groups in registered dataset that did not exist in the voted dataset. Additionally, the `race_code` variable has some missing data (only 2 observations). Finally, we notice that some counties have instances where the total number of voters is larger than the total number of registered voters, which is impossible and will not work in our model. For these counties, we reduce the total number of voters to be equal to the total number of registered voters. 
 
 ```{r}
 vote <- data.frame(apply(vote, 2, function(x) gsub("^$|^ $", NA, x)))
 
 apply(vote, 2, function(x) sum(is.na(x))) %>%
   kbl()
+
+vote <- vote %>%
+  mutate(total_voters = as.numeric(total_voters), 
+         total_registered = as.numeric(total_registered), 
+         county_desc = as.factor(county_desc), 
+         party_cd = as.factor(party_cd), 
+         race_code = as.factor(race_code), 
+         sex_code = as.factor(sex_code), 
+         ethnic_code = as.factor(ethnic_code), 
+         age = as.factor(age)
+         ) %>%
+  mutate(total_voters = case_when(
+    total_voters > total_registered ~ total_registered, 
+    TRUE ~ total_voters
+  ))
 ```
 
 
@@ -103,6 +122,12 @@ voted %>%
 ### Final dataset: 51,906 observations
 
 # EDA
+
+```{r}
+# create a 0 variable for people who didnt vote
+vote <- vote %>%
+  mutate(total_nonvoters = total_registered - total_voters)
+```
 
 
 
