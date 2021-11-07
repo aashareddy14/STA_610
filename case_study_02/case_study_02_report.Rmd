@@ -39,13 +39,19 @@ The North Carolina State Board of Elections (NCSBE) is the agency charged with t
 
 ## Research Questions 
 
-* How did different demographic subgroups vote in the 2020 general elections? For example, how did the turnout for males compare to the turnout for females after controlling for other potential predictors?
-* Did the overall probability or odds of voting differ by county in 2020? Which counties differ the most from other counties?
-* How did the turnout rates differ between females and males for the different party affiliations?
-* How did the turnout rates differ between age groups for the different party affiliations?
+1) How did different demographic subgroups vote in the 2020 general elections? For example, how did the turnout for males compare to the turnout for females after controlling for other potential predictors?
+--> examine fixed effects
+
+2) Did the overall probability or odds of voting differ by county in 2020? Which counties differ the most from other counties?
+--> random intercept for county
+
+3) How did the turnout rates differ between females and males for the different party affiliations?
+--> interactionb between gender and party_cd
+
+4) How did the turnout rates differ between age groups for the different party affiliations?
+--> interaction between age and party_cd
 
 # Data and cleaning 
-
 We have two datasets that we will merge: voter_stats_20201103.txt contains information about the aggregate counts of registered voters by the demographic variables, and history_stats_20201103.txt contains information about the aggregate counts of voters who actually voted by the demographic variables. We first clean the data. 
 
 Our outcome variable of interest needs to be created. We are examining the turnout of voters, and we have counts of total registered voters in one dataset (we will call this dataset "registered"), and counts of people who actually voted in another dataset (we will call this dataset "voted"). We will end up wanting one column for successes (number of people who actually voted), and one column for total number of people who were elligible to vote (total registered). 
@@ -56,7 +62,7 @@ We note that in the registered dataset, `precinct_abbrv` and `vtd_abbrv` will no
 
 ```{r}
 registered <- registered %>%
-  rename(total_registered = total_voters) %>%
+  dplyr::rename(total_registered = total_voters) %>%
   mutate(total_registered = as.numeric(total_registered))
 
 voted <- voted %>%
@@ -85,6 +91,8 @@ vote <- r %>%
 
 We note that after merging, we have 6057 missing observations for voting_method, voted_party_cd, and total_voters. This is because there were demographic/geographic groups in registered dataset that did not exist in the voted dataset. Additionally, the `race_code` variable has some missing data (only 2 observations). Finally, we notice that some counties have instances where the total number of voters is larger than the total number of registered voters, which is impossible and will not work in our model. For these counties, we reduce the total number of voters to be equal to the total number of registered voters. 
 
+We also get rid of all rows that contain NA values for `total_registered` or `total_voters` as these are our outcome variables and it does not make sense to use missing data for outcome variables in our model. 
+
 ```{r}
 vote <- data.frame(apply(vote, 2, function(x) gsub("^$|^ $", NA, x)))
 
@@ -105,6 +113,9 @@ vote <- vote %>%
     total_voters > total_registered ~ total_registered, 
     TRUE ~ total_voters
   ))
+
+vote <- vote %>%
+  filter(!is.na(total_voters), !is.na(total_registered))
 ```
 
 
@@ -119,16 +130,168 @@ voted %>%
          ethnic_code == "NL", sex_code == "F", age == "Age 18 - 25")
 ```
 
-### Final dataset: 51,906 observations
+### Final dataset: 45,849 observations (after removing NA from outcome variables)
+
+Finally, we select a random sample of 30 counties to continue our modeling with. The 30 counties we choose are: Hyde, Edgecombe, Haywood, Clay, Montgomery, Durham, Cabarrus, Cherokee, Duplin, Orange, Bladen, Sampson, Transylvania, Davie, Surry, Stanly, Watauga, Caldwell, Anson, Robeson, Beaufort, Pender, Graham, Stokes, Martin, Lenoir, Hertford, Wilson, Randolph, and New Hanover.
+
+```{r}
+set.seed(99)
+county_samp <- as.character(sample(unique(vote$county_desc), size = 30))
+
+# this is a random sample, save it so report is reproducible
+county_samp <- c("HYDE", "EDGECOMBE", "HAYWOOD", "CLAY", "MONTGOMERY", "DURHAM", "CABARRUS", "CHEROKEE", "DUPLIN", "ORANGE", "BLADEN", "SAMPSON", "TRANSYLVANIA", "DAVIE", "SURRY", "STANLY", "WATAUGA", "CALDWELL", "ANSON", "ROBESON", "BEAUFORT", "PENDER", "GRAHAM", "STOKES", "MARTIN", "LENOIR", "HERTFORD", "WILSON", "RANDOLPH", "NEW HANOVER")
+
+vote <- vote %>%
+  filter(county_desc %in% c(county_samp))
+```
+
 
 # EDA
+
+First we de-aggregate the dataset so that we can do some EDA on it, meaning we expand the dataset to have our outcome variable, whether someone voted or not (`voted`) be 0 or 1, rather than having an aggregated count. This increases our dataset to 1,590,202 observations.
 
 ```{r}
 # create a 0 variable for people who didnt vote
 vote <- vote %>%
   mutate(total_nonvoters = total_registered - total_voters)
+
+# elongate vote dataset to make it not aggregate
+vote_long <- vote %>%
+  pivot_longer(cols = c("total_voters", "total_nonvoters"), names_to = "voted", values_to = "freq") %>%
+  mutate(voted = ifelse(voted == "total_voters", "Yes", "No")) %>%
+  mutate(obs = map(freq, ~rep_len(1, .x))) %>%
+  unnest() %>%
+  select(-freq, -obs)
+```
+
+## Examine outcome variable: `voted`
+
+Our outcome variable, `voted`, is binary, and equals "Yes" if the person in the dataset voted, and "No" if they did not. We see that there are 1,190,612 people who voted and 399,590 people who did not vote.
+
+```{r, eval=FALSE}
+table(vote_long$voted)
+```
+
+## Research question 2: random intercept for county
+
+Our 2nd research question asks us to examine whether the overall probability or odds of voting differed by county in 2020. This points to inclusion of a random intercept by county. We can see that there is a small amount variation in the proportion of registered voters who voted by county. We will include this variable as our grouping variable in our logistic hierarchical model based on our research questions. 
+
+## Research question 1: Examine fixed effects
+
+Our first research questions asks to examine how different demographic subgroups voted, and how turnout for males compared to turnout for females after controlling for other predictors. This points to examination of different fixed effects, with a emphasis on examining gender. Thus, we use EDA to examine which fixed effects to include in our model. 
+
+We examine plots of predictors vs. our outcome (`voted`) to decide which variables we will consider in our model selection process (should we use step-wise search using BIC?). We find the following variables show a difference between the counts of 0s and 1s in our outcome, and we consider them in our model selection process: `age`, `ethnic_code`, `race_code`, `party_cd`. Note that we will also definitely include `sex_code` as this is explicitly in our research question.  
+
+```{r}
+race_code <- ggplot(vote_long) + 
+  geom_bar(aes(x = race_code, fill = voted), 
+           position = "fill") + 
+  labs(y = "Proportion", 
+       title = "race_code") +
+  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+        plot.title = element_text(size = 10, hjust = 0.5), 
+        axis.title.x = element_blank())
+
+party_cd <- ggplot(vote_long) + 
+  geom_bar(aes(x = party_cd, fill = voted), 
+           position = "fill") + 
+  labs(y = "Proportion", 
+       title = "party_cd") +
+  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+        plot.title = element_text(size = 10, hjust = 0.5), 
+        axis.title.x = element_blank())
+
+ethnic_code <- ggplot(vote_long) + 
+  geom_bar(aes(x = ethnic_code, fill = voted), 
+           position = "fill") + 
+  labs(y = "Proportion", 
+       title = "ethnic_code") +
+  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+        plot.title = element_text(size = 10, hjust = 0.5), 
+        axis.title.x = element_blank())
+
+sex_code <- ggplot(vote_long) + 
+  geom_bar(aes(x = sex_code, fill = voted), 
+           position = "fill") + 
+  labs(y = "Proportion", 
+       title = "sex_code") +
+  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+        plot.title = element_text(size = 10, hjust = 0.5), 
+        axis.title.x = element_blank())
+
+age <- ggplot(vote_long) + 
+  geom_bar(aes(x = age, fill = voted), 
+           position = "fill") + 
+  labs(y = "Proportion", 
+       title = "age") +
+  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+        plot.title = element_text(size = 10, hjust = 0.5), 
+        axis.title.x = element_blank())
+
+patchwork <- (sex_code + age + ethnic_code) / (race_code + party_cd) +
+  plot_layout(guides = "collect", widths = c(1, 1, 1, 1, 1))
+
+patchwork + plot_annotation(
+  title = "Proportion of registered voters who voted and did not vote by variable")
+
 ```
 
 
+```{r}
+# code from lab 9 for plotting doesnt look great
+
+names <- vote_long %>% 
+  select(-county_desc, -total_registered) %>%
+  colnames
+
+
+vote_long %>% select(-county_desc, -total_registered) %>%
+  pivot_longer(-voted) %>% 
+  mutate(name = factor(name, levels = names)) %>%
+  mutate(voted = as.factor(voted)) %>%
+  mutate(type = "barplot") %>%
+  ggplot() + 
+  geom_bar(
+    aes(x = value, fill = voted),
+    position = "fill",
+    data = ~subset(.x, type == "barplot")
+  ) +
+  facet_wrap(~name, scale = "free_y", ncol = 4) +
+  ylab("Value / Proportion") +
+  guides(fill=guide_legend(title="Value")) +
+  theme(strip.text.x = element_text(size = 6), 
+        legend.position = "bottom", 
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+
+## Research questions 3 and 4: interactions 
+
+Research question 3 asks how the turnout rates different between males and females for different parties, and question 4 asks how turnout rates differ between age groups for the different parties. These point to `sex_code:party_cd` and `age:party_cd` interactions, respectively. We will thus include these interactions in our final model. We do not consider other interactions, but could in a future analysis. According to the below plots, we can see there is some initial evidence of different turnout rates of genders and ages by parties, and we will explore this further in our model.  
+
+```{r, fig.height = 4}
+sex_code_int <- ggplot(vote_long) + 
+  geom_bar(aes(x = sex_code, fill = voted), 
+           position = "fill") + 
+  labs(y = "Proportion") +
+  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+        plot.title = element_text(size = 10, hjust = 0.5), 
+        legend.position = "none") + 
+  facet_wrap(~party_cd, ncol= 6)
+
+age_int <- ggplot(vote_long) + 
+  geom_bar(aes(x = age, fill = voted), 
+           position = "fill") + 
+  labs(y = "Proportion") +
+  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+        plot.title = element_text(size = 10, hjust = 0.5)) + 
+  facet_wrap(~party_cd, ncol = 6)
+
+patchwork <- sex_code_int / age_int
+  plot_layout(guides = "collect", widths = c(1, 1))
+
+patchwork + plot_annotation(
+  title = "Proportion of registered voters who voted and did not vote \nvs. gender and age by party")
+```
 
 
