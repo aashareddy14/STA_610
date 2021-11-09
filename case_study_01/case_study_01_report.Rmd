@@ -13,14 +13,24 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
 ```
 
 10/17 Meeting, things to discuss
-- should we move the Cooks distance to the appendix?
-- discussion of qq plot is needed
-- should we interpret the Bayesian model?
-- Current bayesian model does not use the results from the frequentist model, does it?
-- Model building section - only include the ex_result_int table? 
-- finish data cleaning section writing
-- finish model building section writing
 - Need to make a code appendix once the report is completely finalized 
+
+To do (10/17):
+- [Marc] Move cooks distance to appendix along with dfbetas - texas 
+- [Bo] Model building section - only include the ex_result_int table
+- [Marc] Report - talk about diagnostic section but put plots in appendix (Cook's distance, qq plot, residual plot)
+- [Shirley] Move bayesian to appendix. should we interpret the Bayesian model? Doesn't matter what we interpret because models are very close. Maybe we give a comparison between the two results and say that they are very similar (CI vs. credible interval). Side by side estimate of posterior mean of estimates and MLE ests? (6 param by 6 table)
+- [Shirley] Add pictures of the posterior distributions in the Appendix, this includes the traceplots
+- [Shirley] talk about why we choose frequentist model over Bayesian
+- [Bo] Bayesian model outputs are printings warnings 
+- [Bo] Current bayesian model does not use the results from the frequentist model, does it? This is fine - just explain why we chose those priors
+- [Aasha] Need to make a code appendix once the report is completely finalized 
+- [Aasha] make random effect font smaller 
+- [Bo] fixing merge conflicts
+- [Aasha] shorten EDA plots/move to appendix .
+
+
+
 
 
 To do (10/15):
@@ -57,6 +67,7 @@ library(kableExtra)
 library(patchwork)
 library(lubridate)
 library(gridExtra)
+library(influence.ME)
 
 options(scipen = 0, digits = 4)
 ggplot2::theme_set(ggplot2::theme_bw())
@@ -65,8 +76,13 @@ ggplot2::theme_set(ggplot2::theme_bw())
 
 ```{r}
 #load data
+<<<<<<< HEAD
 # load("case_study_01/streetrx.RData")
 load("streetrx.RData")
+=======
+load("streetrx.RData")
+#load("~/Statistics - Duke University/2021 Fall/STA 610 - Hierarchical Models/STA_610_groupwork/case_study_01/streetrx.RData")
+>>>>>>> 9f7a5d390c398314ee8132110bb615ec9480390d
 
 # GROUP 1 - METHADONE
 # filter data for only methadone
@@ -90,9 +106,11 @@ We first clean data and conduct exploratory data analysis (EDA) to assess any ne
 
 # Data and Cleaning
 
-We first examine missing data in the streetrx data. We substitute NA for all missing values. We see that some variables, such as ppm, city, source, mgstr and primary_reason have many missing values. For the purpose of our model, we will not use the primary_reason variable, as they contain the most missing observations. Source contains links to websites where individuals purchased the Methadone, which will not be helpful in the model. 
+We first examine missing data in the streetrx data. We substitute NA for all missing values. We see that some variables, such as ppm, city, source, mgstr and primary_reason have many missing values. For the purpose of our model, we will not use the primary_reason variable, as they contain the most missing observations. We also note that individuals self-report their city, state, and country, so there are some data entry errors. For instance, some observations report purchased in "New York" vs. "New York Manhattan" vs. "New York City", which all refer to the same city. Thus, this variable may not be reliable as a grouping variable to explore heterogeneity within location. This is not an issue with State, so we choose to use state as our grouping variable. We also note that all purchases were made in the USA. 
 
-We also note that individuals self-report their city, state, and country, so there are some data entry errors. For instance, some observations report purchased in "New York" vs. "New York Manhattan" vs. "New York City", which all refer to the same city. Thus, this variable may not be reliable as a grouping variable to explore heterogeneity within location. This is not an issue with State, so we choose to use state as our grouping variable. We also note that all purchases were made in the USA. 
+Then, we proceeded to modify variables and remove observation as needed. We modified the types of the variables as needed to make sure that variables were reflected as factors or numeric depending on the variable. We also noted that all of the observations with a missing value for price per milligram also were missing a value for the dosage, so we removed all of these observations as it is nonsensical to include observations that are missing a value for the response variable. The fact that these variables also were missing the dosage value then leads to us having no missing dosage values in the data we use for modeling, which is helpful. Following that, from our EDA we noticed that most of the dosage values were either 5, 10, or 40 mg, so we decided to remove the few observations that did not have these values (these were less than 10 observations did not have these dosage), and then we coded the dosage variable (mgstr) as a factor variable since it only has three levels. Following that, we noted while examining the that two of the observations had stated 1969 as the year, which did not make sense considering StreetRx did not exist at the time, so we removed these observations as well. Since we decided to use stats as our grouping variable, we also removed observations that had input "USA" as the state, as these would not actually give us information about heterogeneity in price per milligram values amongst states. We also combined all of the various websites that were reported as sources and coded them all as "Internet" since all of these sites are essentially the same as having sourced from the Internet, and that greatly reduced the number of levels we would have for the Source variable. Finally, we removed any states with only one observation as it would not make sense to try to estimate within-group variance for states with only one observation. However, this only removed two states/terrirotires, Washington D.C. and Guam, so we can still get useful insights into the heterogeneity present in prices per milligram across all of the other states and territories in the dataset.
+
+
 
 ```{r}
 # variable description table
@@ -197,7 +215,7 @@ streetrx <- streetrx %>%
 
 ### Checking distribution of outcome variable (ppm)
 
-We explore the data first by examining the distribution of our outcome variable, price per mg (ppm). We next examine the distribution of our outcome variable, ppm (price per mg). We can see that ppm spans a large range of values, from \$0.00025/mg to \$40/mg. We note from the below histogram that the distribution is highly right-skewed. To satisfy the conditional distribution assumption, we want to aim for ppm to be normally distributed and symmetric. This of course only examines the marginal distribution of ppm, but the idea is that this may carry over into the conditional distribution, which we examine after the model fitting process
+We explore the data first by examining the distribution of our outcome variable, price per mg (ppm). We next examine the distribution of our outcome variable, ppm (price per mg). We can see that ppm spans a large range of values, from \$0.00025/mg to \$40/mg. We note from the below histogram that the distribution is highly right-skewed. To satisfy the conditional distribution assumption, we want to aim for ppm to be normally distributed and symmetric. This of course only examines the marginal distribution of ppm, but the idea is that this may carry over into the conditional distribution, which we examine after the model fitting process.
 
 We choose to do a log transformation of ppm. We can see in the below plot that the histogram of log(ppm) is relatively normally distributed and symmetric. Using a log transformation is a good choice as well because our raw data ppm observation are all greater than 0, and log transformations are still interpretable, which is important in this case study. 
 
@@ -544,11 +562,18 @@ streetrx %>%
 # Outside of `mgstr` and `quarter`,  `bulk_purchase` and `quarter`, `source` and, and `mgstr` `bulk_purchase` and `mgstr` there was not strong evidence for other interaction effects. Even for those listed above the evidence was not substantial in our EDA, and some of the variation is likely due to a lack of observations for certain interaction terms.
 ```
 
+<<<<<<< HEAD
 
 
 # Model Selection and Fitting
 
 In this section, we expect to build a model that explains what factors affect the drug price and accounts for the uncertainty in the model. To simplify the modelling process while still being easy to interpret uncertainty, we decide to use a naive bayesian approach of model selection. The process has two phases. First, we run an exhaustive search on a bunch of models, and select the one that has minimum BIC. Then, we run a Bayesian hierarchical model to estimate the parameters, including the coefficients and the variances.
+=======
+# Model Building and Selection
+
+
+In this section, we expect to build a model that explains what factors affect the drug price and accounts for the uncertainty in the model. To simplify the modeling while still being able to interpret uncertainty, we decide to use a two phase process. First, we run an exhaustive search on a bunch of models, and select the one that has minimum BIC. Then, we run a frequentist / Bayesian hierarchical model to estimate the parameters, including the coefficients and the variances.
+>>>>>>> 9f7a5d390c398314ee8132110bb615ec9480390d
 
 ## Model Selection
 
@@ -620,13 +645,18 @@ $$
 $$
 where $y_{is}$ is the ppm for purchase $i$ in state $s$, and $\mathrm{mgstr}_{is}$, $\mathrm{bulkp}_{is}$, and $\mathrm{source}_{is}$ are fixed effects.
 
+<<<<<<< HEAD
 Fitting the model with frequenst MLE, we have the following results.
+=======
+Fitting the model with frequentist MLE, we have the following results.
+>>>>>>> 9f7a5d390c398314ee8132110bb615ec9480390d
 ```{r}
-best_model <- ex_result %>% arrange(BIC) %>% .[1, "model"]
+best_model <- ex_result_int %>% arrange(BIC) %>% .[1, "model"]
 res <- lmer(as.formula(best_model), REML = F, data = streetrx)
 summary(res)
 ```
 
+<<<<<<< HEAD
 
 Now we impose a prior on the parameters and fit the model using a Bayesian approach. Since we do not have much information about the model, we use non-informative priors:
 $$\beta_j \stackrel{iid}{\sim}\mathrm{Normal}(0,1), \tau_^2 \sim \mathrm{InvGamma}(0.1, 0.1), \sigma_^2 \sim \mathrm{InvGamma}(0.1, 0.1).$$
@@ -642,23 +672,11 @@ bayes_result <- brm(as.formula(best_model), data = streetrx, prior = priors,
 One can see that the results given by Bayesian setting is almost the same is that from the frequentist setting.
 
 Posterior checks:
+=======
+>>>>>>> 9f7a5d390c398314ee8132110bb615ec9480390d
 
-```{r}
-plot(res)
-```
+We also explored using a Bayesian model, but found estimates from that model were very similar to the frequentist model we fitted, so we proceeded to interpret the frequntist model that we fitted above. The Bayesian model estimates and posterior distributions can be found in the appendix.
 
-Examine the normality of residuals
-
-```{r}
-residual <- resid(res)
-p1 <- ggplot() + 
-  geom_qq(aes(sample = residual)) +
-  geom_qq_line(aes(sample = residual)) +
-  coord_equal()
-p2 <- ggplot() +
-  geom_density(aes(x = residual))
-p1 + p2
-```
 
 # Interpretation of results
 
@@ -701,8 +719,7 @@ library(lattice)
 dotplot(ranef(res, condVar = TRUE))$state
 ```
 
-Overall the plot demonstrates significant heterogeneity across states in the baseline ppm of methadone for purchases that were in bulk and that had been reported by word of mouth. Three states, California, Missouri, and Arizona, do not contain 0 in their 95% confidence interval, implying a significant difference in their baseline ppm and the grand 
-mean across all states. The plot also shows that the largest estimate was for Tennessee, 14.8% 
+Overall the plot demonstrates significant heterogeneity across states in the baseline ppm of methadone for purchases that were in bulk and that had been reported by word of mouth. Three states, California, Missouri, and Arizona, do not contain 0 in their 95% confidence interval, implying a significant difference in their baseline ppm and the grand mean across all states. The plot also shows that the largest estimate was for Tennessee, 14.8% 
 increase from the grand mean, while the smallest estimate was for California, a 18.13% decrease
 from the grand mean. 
 
@@ -716,51 +733,47 @@ as.data.frame(VarCorr(res)) %>%
                 latex_options = "HOLD_position")
 ```
 
-Our across state variance of ppm is fairly small at 0.0124 while the within state variance remains large at 0.6548. Clearly, there is still a lot of within-group variance that our model is unable to explain.
+Our across state variance of ppm is fairly small at 0.0124 while the within 
+state variance remains large at 0.6548. Clearly, there is still a lot of 
+within-group variance that our model is unable to explain.
 
-## Model Diagnostics (Influence of groups)   
+## Model Diagnostics
 
-#### Cook's Distance
+#### Residual Analysis
 
-Now that we have our final model we will perform, model diagnostics to determine if there are influential groups that might be effecting our model assumptions. First we will look at the DFBETAS of each parameter for each state. Following this, we use Cook's distance as another criteria to determine if there are cases of influential states.    
+Through examining our residuals we can determine how well our model assumptions
+hold. The plot of our residual against the fitted values are somewhat reassuring. 
+Aside for a couple points that appear to be potential outliers, we observed that 
+the constant variance and linearity conditions are met. It is possible that the 
+two outliers contribute to our larger within state variance, though this is someone 
+we do not explore in this analysis. 
 
-```{r}
-library(influence.ME)
-```
+The normality assumption is not met, as the distribution of the residuals appears 
+to have fatter tails, particularly on the left side of the distribution where a 
+few outliers are present. With that being said, the density of the residuals is 
+fairly symmetric and centered at 0.
 
-```{r}
-best_model.inf <- influence(res, "state")
-cutoff <- 2/sqrt(length(unique(streetrx$state)))
-```
+#### Influential Groups
 
+Now we take steps to determine if there are influential groups that might be 
+effecting our model assumptions. First we look at the DFBETAS of each parameter 
+for each state. Following this, we use Cook's distance as another criteria to 
+determine if there are cases of influential states.    
 
-```{r}
-dfbetas_inf <- round(dfbetas(best_model.inf), 4)
-above_cutoff <- apply(abs(dfbetas_inf) > cutoff, MARGIN = 1, any)
-dfbetas_inf[above_cutoff,] %>%
-  knitr::kable(caption = "Level of influences states have on single parameter estiamtes") %>% 
-  kable_styling(latex_options = "HOLD_position")
+There are 14 states such that at least one parameter had a standardized difference
+in their estimate that exceeded our cutoff when excluding that state. Note that 
+many of the states included have the largest sample sizes in the data set. These 
+include California, Texas, and New York. A table of states and their corresponding 
+DFBETAS for each variable can be seen in the appendix.
 
-```
-
-
-The above table contains the states such that at least one parameter had a standardized difference in their estimate that exceeded our cutoff when excluding that state. Note that many of the states included have the largest sample sizes in the data set.  
-
-```{r, fig.height=15, fig.width=10}
-plot(best_model.inf,which="dfbetas",xlab="DFBETAS",ylab="State")
-```
-
-
-```{r, fig.height=7, fig.width=5}
-plot(best_model.inf,which="cook",cutoff=cutoff,
-sort=TRUE,xlab="Cook's D",ylab="State")
-```
-
-
-When examining Cook's distance, Texas is the only state that exceeds the cutoff and can be considered influential. This is not surprising as Texas had multiple parameters such that their DFBETAS exceeded the cutoff and Cook's distance is a summary measure of how an observation influences all parameter estimates. While, it seems Texas is an influence group we have yet to determine if it is an outlier. At the same time, Texas is has the third largest sample size in the data set and is an important data point in the analysis so it does not make sense to consider deleting this group.
-
-#### Normality
-
+When examining Cook's distance, Texas is the only state that exceeds the cutoff 
+and can be considered influential. This is not surprising as Texas had multiple 
+parameters with DFBETAS that exceeded the cutoff and Cook's distance is a 
+summary measure of how an observation influences all parameter estimates. While, 
+it seems Texas is an influential group we have yet to determine if it is an outlier as well. 
+At the same time, Texas has the third largest sample size in the data set and 
+clearly a state we would want to include in the analysis so it does not make sense to 
+consider deleting this group.
 
 
 # Appendix
@@ -846,3 +859,115 @@ patchwork + plot_annotation(
 )
 ```
 
+
+
+## Model Diagnostics
+
+### Residual Plots
+
+```{r}
+plot(res)
+```
+
+
+```{r}
+residual <- resid(res)
+p1 <- ggplot() + 
+  geom_qq(aes(sample = residual)) +
+  geom_qq_line(aes(sample = residual)) +
+  coord_equal()
+p2 <- ggplot() +
+  geom_density(aes(x = residual))
+p1 + p2
+```
+
+### Influential Groups
+
+Table of DFBETAS 
+
+```{r}
+best_model.inf <- influence(res, "state")
+cutoff <- 2/sqrt(length(unique(streetrx$state)))
+
+dfbetas_inf <- round(dfbetas(best_model.inf), 4)
+above_cutoff <- apply(abs(dfbetas_inf) > cutoff, MARGIN = 1, any)
+dfbetas_inf[above_cutoff,] %>%
+  knitr::kable(caption = "Level of influence states have on single parameter estiamtes") %>% 
+  kable_styling(latex_options = "HOLD_position")
+
+```
+
+```{r, fig.height=15, fig.width=10}
+plot(best_model.inf,which="dfbetas",xlab="DFBETAS",ylab="State")
+```
+
+
+```{r, fig.height=7, fig.width=5}
+plot(best_model.inf,which="cook",cutoff=cutoff,
+sort=TRUE,xlab="Cook's D",ylab="State")
+```
+
+## Bayesian Model Comparison
+
+### Model Fitting
+Here we imposed a prior on the parameters and fit the model using a Bayesian approach to see if we had differing estimates using this approach. Since we did not have much information about the model, we used non-informative priors:
+$$\beta_j \stackrel{iid}{\sim}\mathrm{Normal}(0,1), \tau_^2 \sim \mathrm{InvGamma}(0.1, 0.1), \sigma_^2 \sim \mathrm{InvGamma}(0.1, 0.1).$$
+```{r, message = F}
+priors <- c(
+  set_prior("normal(0, 1)", class = 'b'),
+  set_prior("inv_gamma(0.1, 0.1)", class = "sd", group = "state"),
+  set_prior("inv_gamma(0.1, 0.1)", class = 'sd')
+)
+
+bayes_result <- brm(as.formula(best_model), data = streetrx, prior = priors,
+                    verbose = F, refresh = 0)
+```
+
+### Estimates Comparison
+```{r}
+
+bayes_fixed <- (summary(bayes_result)$fixed) %>%
+  select("Estimate") %>%
+  rename("Bayesian Model Esimate" = "Estimate")
+
+freq_est <- as.matrix(coef(summary(res))[,1])
+colnames(freq_est)[[1]] <- "Frequentist Model Estimate"
+
+
+
+cbind(freq_est, bayes_fixed) %>%
+  knitr::kable(caption = "Fixed effect estimates comparison") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                latex_options = "HOLD_position") 
+
+bayesian_var <- rbind(summary(bayes_result)$spec_pars %>%
+  select("Estimate"),
+  summary(bayes_result)$random$state %>% select("Estimate")) %>%
+  mutate(Estimate = Estimate^2) %>%
+  rename("Bayesian Model Estimate" = "Estimate")
+
+rownames(bayesian_var) <- c("Residual", "State")
+
+frequentist_est <- as.data.frame(VarCorr(res)) %>%
+  select(1, 4) %>%
+  rename(var = vcov) %>%
+  rename("Frequentist Model Estimate" = var) %>%
+  select("Frequentist Model Estimate")
+  
+
+rownames(frequentist_est) <- c("State", "Residual")
+
+merge(bayesian_var, frequentist_est, by = "row.names") %>%
+  rename("Source of Variation" = "Row.names") %>%
+  knitr::kable(caption = "Variance estimates comparison") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                latex_options = "HOLD_position")
+```
+
+From the above tables, we can see that the results given by Bayesian setting is almost the same as that from the frequentist setting.
+
+### Posterior Checks
+The below plots show our posterior distributions for all parameters of interest and traceplots to check that the sampling chains converged, which they did as shown below.
+```{r}
+plot(bayes_result)
+```
