@@ -29,8 +29,8 @@ ggplot2::theme_set(ggplot2::theme_bw())
 
 ```{r}
 #load data
-registered <- read.delim("data/voter_stats_20201103.txt")
-voted <- read.delim("data/history_stats_20201103.txt")
+registered <- read.delim("../data/voter_stats_20201103.txt")
+voted <- read.delim("../data/history_stats_20201103.txt")
 ```
 
 # Introduction 
@@ -70,7 +70,7 @@ voted <- voted %>%
   mutate(total_voters = as.numeric(total_voters))
 ```
 
-Overall, in the voted dataset, we would like to keep the following variables: `county_desc`, `age`, `party_cd`, `race_code`, `ethnic_code`, `sex_code`, `total_voters`, `voting_method`, `voted_party_cd`, so we will aggregate to this level using a dplyr::group_by(). Overall, in the registered dataset, we would like to keep the following variables: `county_desc`, `party_cd`, `race_code`, `ethnic_code`, `sex_code`, `age`, `total_registered`, so we will again aggregate to this level using a dplyr::group_by(). After this, we can merge the datasets.
+Overall, in the voted dataset, we would like to keep the following variables: `county_desc`, `age`, `party_cd`, `race_code`, `ethnic_code`, `sex_code`, `total_voters`, `voting_method`, `voted_party_cd`, so we will aggregate to this level using a dplyr::group_by(). [BO: This seems contradictory to what you mentioned earlier on the decision of `voting_method` & `voted_party_cd`, as well as the code implementation.] Overall, in the registered dataset, we would like to keep the following variables: `county_desc`, `party_cd`, `race_code`, `ethnic_code`, `sex_code`, `age`, `total_registered`, so we will again aggregate to this level using a dplyr::group_by(). After this, we can merge the datasets.
 
 ```{r}
 v <- voted %>%
@@ -89,7 +89,7 @@ vote <- r %>%
 
 ```
 
-We note that after merging, we have 6057 missing observations for voting_method, voted_party_cd, and total_voters. This is because there were demographic/geographic groups in registered dataset that did not exist in the voted dataset. Additionally, the `race_code` variable has some missing data (only 2 observations). Finally, we notice that some counties have instances where the total number of voters is larger than the total number of registered voters, which is impossible and will not work in our model. For these counties, we reduce the total number of voters to be equal to the total number of registered voters. 
+We note that after merging, we have 6057 missing observations for voting_method, voted_party_cd, and total_voters. [BO: Did you really include `voting_method` and `voted_party_cd`? Might need to change the narration.] This is because there were demographic/geographic groups in registered dataset that did not exist in the voted dataset. Additionally, the `race_code` variable has some missing data (only 2 observations). [BO: I did not see any missing data for columns except `total_voters`] Finally, we notice that some counties have instances where the total number of voters is larger than the total number of registered voters, which is impossible and will not work in our model. For these counties, we reduce the total number of voters to be equal to the total number of registered voters. [BO: 12 observations in total]
 
 We also get rid of all rows that contain NA values for `total_registered` or `total_voters` as these are our outcome variables and it does not make sense to use missing data for outcome variables in our model. 
 
@@ -182,13 +182,14 @@ Our first research questions asks to examine how different demographic subgroups
 
 We examine plots of predictors vs. our outcome (`voted`) to decide which variables we will consider in our model selection process (should we use step-wise search using BIC?). We find the following variables show a difference between the counts of 0s and 1s in our outcome, and we consider them in our model selection process: `age`, `ethnic_code`, `race_code`, `party_cd`. Note that we will also definitely include `sex_code` as this is explicitly in our research question.  
 
+[BO: Fixed the annotation of x axis so that each string is located exactly under the tick.]
 ```{r}
 race_code <- ggplot(vote_long) + 
   geom_bar(aes(x = race_code, fill = voted), 
            position = "fill") + 
   labs(y = "Proportion", 
        title = "race_code") +
-  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), 
         plot.title = element_text(size = 10, hjust = 0.5), 
         axis.title.x = element_blank())
 
@@ -197,7 +198,7 @@ party_cd <- ggplot(vote_long) +
            position = "fill") + 
   labs(y = "Proportion", 
        title = "party_cd") +
-  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), 
         plot.title = element_text(size = 10, hjust = 0.5), 
         axis.title.x = element_blank())
 
@@ -206,7 +207,7 @@ ethnic_code <- ggplot(vote_long) +
            position = "fill") + 
   labs(y = "Proportion", 
        title = "ethnic_code") +
-  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), 
         plot.title = element_text(size = 10, hjust = 0.5), 
         axis.title.x = element_blank())
 
@@ -215,7 +216,7 @@ sex_code <- ggplot(vote_long) +
            position = "fill") + 
   labs(y = "Proportion", 
        title = "sex_code") +
-  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), 
         plot.title = element_text(size = 10, hjust = 0.5), 
         axis.title.x = element_blank())
 
@@ -224,7 +225,7 @@ age <- ggplot(vote_long) +
            position = "fill") + 
   labs(y = "Proportion", 
        title = "age") +
-  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), 
         plot.title = element_text(size = 10, hjust = 0.5), 
         axis.title.x = element_blank())
 
@@ -236,7 +237,7 @@ patchwork + plot_annotation(
 
 ```
 
-
+[BO: Fixed this plot as well - need to change scale from "free_y" to "free" so that x labels are not shared.]
 ```{r}
 # code from lab 9 for plotting doesnt look great
 
@@ -256,11 +257,12 @@ vote_long %>% select(-county_desc, -total_registered) %>%
     position = "fill",
     data = ~subset(.x, type == "barplot")
   ) +
-  facet_wrap(~name, scale = "free_y", ncol = 4) +
-  ylab("Value / Proportion") +
+  facet_wrap(~name, scale = "free", ncol = 3) +
+  xlab("") +
+  ylab("Proportion") +
   guides(fill=guide_legend(title="Value")) +
   theme(strip.text.x = element_text(size = 6), 
-        legend.position = "bottom", 
+        legend.position = "right", 
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
