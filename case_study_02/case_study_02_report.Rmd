@@ -27,6 +27,25 @@ ggplot2::theme_set(ggplot2::theme_bw())
 ```
 
 
+Notes from 11/9 meeting:
+- [Aasha] Change party_cd to voted_party_cd
+- [Aasha] Double check missing data for race
+- [Aasha] Add comment on the assumption for total_registered < total_voters
+- [Aasha] Check whether missing pattern has something to do with other columns. WE can still remove missing data but look into rationale for doing so. - There are no 0s in the voted dataset, so we can just impute 0 for NAs 
+- [Aasha] Check how many missing observations are in new dataset
+- [Aasha] Make plots for random slopes
+
+- [Bo] Make sure male is baseline level for sex_code
+- [Bo] Exhaustive search for model selection
+- [Bo] Update the model specification
+- Start with frequentist model and then Bayesian model after (put other in appendix)
+- [Marc] Interpretation of frequentist
+- [Shirley] Bayesian modeling
+- [Aasha] putting slides together
+- Model assessment (ROC curves, etc.)
+
+
+
 ```{r}
 #load data
 registered <- read.delim("../data/voter_stats_20201103.txt")
@@ -40,16 +59,16 @@ The North Carolina State Board of Elections (NCSBE) is the agency charged with t
 ## Research Questions 
 
 1) How did different demographic subgroups vote in the 2020 general elections? For example, how did the turnout for males compare to the turnout for females after controlling for other potential predictors?
---> examine fixed effects for gender
+--> examine fixed effects for all demographic subgroups
 
 2) Did the overall probability or odds of voting differ by county in 2020? Which counties differ the most from other counties?
 --> random intercept for county
 
 3) How did the turnout rates differ between females and males for the different party affiliations?
---> interactionb between gender and party_cd
+--> interaction between gender and voted_party_cd
 
 4) How did the turnout rates differ between age groups for the different party affiliations?
---> interaction between age and party_cd
+--> interaction between age and voted_party_cd
 
 # Data and cleaning 
 We have two datasets that we will merge: voter_stats_20201103.txt contains information about the aggregate counts of registered voters by the demographic variables, and history_stats_20201103.txt contains information about the aggregate counts of voters who actually voted by the demographic variables. We first clean the data. 
@@ -114,8 +133,8 @@ vote <- vote %>%
     TRUE ~ total_voters
   ))
 
-vote <- vote %>%
-  filter(!is.na(total_voters), !is.na(total_registered))
+#vote <- vote %>%
+#  filter(!is.na(total_voters), !is.na(total_registered))
 ```
 
 
@@ -134,7 +153,7 @@ voted %>%
 
 Finally, we select a random sample of 30 counties to continue our modeling with. The 30 counties we choose are: Hyde, Edgecombe, Haywood, Clay, Montgomery, Durham, Cabarrus, Cherokee, Duplin, Orange, Bladen, Sampson, Transylvania, Davie, Surry, Stanly, Watauga, Caldwell, Anson, Robeson, Beaufort, Pender, Graham, Stokes, Martin, Lenoir, Hertford, Wilson, Randolph, and New Hanover. 
 
-The final dataset after sampling 30 counties has 13,080 observations. 
+The final dataset after sampling 30 counties has 13,080 observations after deleting missing values.
 
 ```{r}
 set.seed(99)
@@ -145,6 +164,11 @@ county_samp <- c("HYDE", "EDGECOMBE", "HAYWOOD", "CLAY", "MONTGOMERY", "DURHAM",
 
 vote <- vote %>%
   filter(county_desc %in% c(county_samp))
+
+# 
+apply(vote, 2, function(x) sum(is.na(x))) %>%
+  kbl()
+
 ```
 
 
@@ -304,15 +328,16 @@ We also assess other potential interactions, and find that `sex_code:race_code` 
 
 ## Assessing random slopes 
 ?? maybe wait until presentations to see what other groups do
+- put some plots for random slopes
 
 # Model selection and specification
 Next, We do step-wise???? selection using BIC, starting with the base model of the random intercept for county, and a fixed effects for `sex_code`, `age`, `party_cd`, `sex_code:party_cd`, and `age:party_cd` based on our research questions. We use BIC to select other potential fixed effect predictors. Based on step-wise selection, we choose our final model to be the following:
 
 BASE MODEL:
 - random intercept county
-- fixed effects: `sex_code`, `age`, `party_cd` 
+- fixed effects: `sex_code`, `age`, `party_cd`
 - interactions: `sex_code:party_cd`, `age:party_cd`
-- test (from EDA): `race_code`, `ethnic_code` `sex_code:race_code`, `party_cd:race_code` (this is basically all the other predictors, and some interactions)
+- exhaustive search: all fixed effects and interactions 
 
 
 1) How did different demographic subgroups vote in the 2020 general elections? For example, how did the turnout for males compare to the turnout for females after controlling for other potential predictors?
@@ -331,7 +356,7 @@ BASE MODEL:
 # Old specification from lab 9 - we should use the aggregated version
 
 $$
-y_{ij} \mid \pi_{ij} \stackrel{\mathrm{iid}}{\sim} \mathrm{Ber}(\pi_{ij}),
+y_{ij} \mid \pi_{ij} \stackrel{\mathrm{iid}}{\sim} \mathrm{Bin}(N_{ij}, \pi_{ij}),
 \quad
 \mathrm{logit}(
 \pi_{ij}
