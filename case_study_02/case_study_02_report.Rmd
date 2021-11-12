@@ -207,7 +207,7 @@ ggplot(vote_long) +
 
 Our first research questions asks to examine how different demographic subgroups voted, and how turnout for males compared to turnout for females after controlling for other predictors. This points to examination of different fixed effects, with a emphasis on examining gender. In our model selection process, we will test all fixed effects, but we use EDA to examine which fixed effects may be most related to our outcome. `age`, `voted_party_cd`, `race_code`, and `ethnic_code` seem to vary the most among their levels with the proportion of those who voted. Note that we will also definitely include `sex_code` as this is explicitly in our research question.  
 
-```{r}
+```{r, fig.width = 4, fig.height=5}
 names <- vote_long %>% 
   select(-county_desc, -total_registered) %>%
   colnames
@@ -224,12 +224,12 @@ vote_long %>% select(-county_desc, -total_registered) %>%
     position = "fill",
     data = ~subset(.x, type == "barplot")
   ) +
-  facet_wrap(~name, scale = "free", ncol = 3) +
+  facet_wrap(~name, scale = "free", ncol = 2) +
   xlab("") +
   ylab("Proportion") +
   labs(title = "Proportion of registered voters who voted (Yes) \nand did not vote (No) by variable") +
   guides(fill=guide_legend(title="Value")) +
-  theme(strip.text.x = element_text(size = 6), 
+  theme(strip.text.x = element_text(size = 5), 
         legend.position = "right", 
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
@@ -376,7 +376,7 @@ ggplot(vote_long) +
   theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
         plot.title = element_text(size = 10, hjust = 0.5), 
         legend.position = "none") + 
-  facet_wrap(~race_code, ncol= 6)
+  facet_wrap(~race_code, ncol= 4)
 
 
 # sex_code:ethnic_code
@@ -387,7 +387,7 @@ ggplot(vote_long) +
   theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
         plot.title = element_text(size = 10, hjust = 0.5), 
         legend.position = "none") + 
-  facet_wrap(~ethnic_code, ncol= 6)
+  facet_wrap(~ethnic_code, ncol= 4)
 
 # sex_code:age
 ggplot(vote_long) + 
@@ -397,28 +397,28 @@ ggplot(vote_long) +
   theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
         plot.title = element_text(size = 10, hjust = 0.5), 
         legend.position = "none") + 
-  facet_wrap(~age, ncol= 6)
+  facet_wrap(~age, ncol= 4)
 
 ######## party_cd ##############################################################
 # party_cd:race_code
 ggplot(vote_long) + 
-  geom_bar(aes(x = party_cd, fill = voted), 
+  geom_bar(aes(x = voted_party_cd, fill = voted), 
            position = "fill") + 
   labs(y = "Proportion") +
   theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
         plot.title = element_text(size = 10, hjust = 0.5), 
         legend.position = "none") + 
-  facet_wrap(~race_code, ncol= 6)
+  facet_wrap(~race_code, ncol= 4)
 
 # party_cd:ethnic_code
 ggplot(vote_long) + 
-  geom_bar(aes(x = party_cd, fill = voted), 
+  geom_bar(aes(x = voted_party_cd, fill = voted), 
            position = "fill") + 
   labs(y = "Proportion") +
   theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
         plot.title = element_text(size = 10, hjust = 0.5), 
         legend.position = "none") + 
-  facet_wrap(~ethnic_code, ncol= 6)
+  facet_wrap(~ethnic_code, ncol= 4)
 
 ###### ethnic_code #############################################################
 # ethnic_code:race_code
@@ -429,7 +429,7 @@ ggplot(vote_long) +
   theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
         plot.title = element_text(size = 10, hjust = 0.5), 
         legend.position = "none") + 
-  facet_wrap(~race_code, ncol= 6)
+  facet_wrap(~race_code, ncol= 4)
 
 # ethnic_code:age
 ggplot(vote_long) + 
@@ -439,5 +439,5 @@ ggplot(vote_long) +
   theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
         plot.title = element_text(size = 10, hjust = 0.5), 
         legend.position = "none") + 
-  facet_wrap(~age, ncol= 6)
+  facet_wrap(~age, ncol= 4)
 ```
