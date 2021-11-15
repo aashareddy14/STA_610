@@ -210,6 +210,7 @@ names <- vote_long %>%
   select(-county_desc, -total_registered) %>%
   colnames
 
+names <- names[-1]
 
 vote_long %>% select(-county_desc, -total_registered) %>%
   pivot_longer(-voted) %>% 
@@ -235,7 +236,7 @@ vote_long %>% select(-county_desc, -total_registered) %>%
 
 ## Research questions 3 and 4: interactions 
 
-Research question 3 asks how the turnout rates different between males and females for different parties, and question 4 asks how turnout rates differ between age groups for the different parties. These point to `sex_code:voted_party_cd` and `age:voted_party_cd` interactions, respectively. We will thus include these interactions in our final model. We do not consider other interactions, but could in a future analysis. According to the below plots, we can see there is some initial evidence of different turnout rates of genders and ages by parties, and we will explore this further in our model.  
+Research question 3 asks how the turnout rates different between males and females for different parties, and question 4 asks how turnout rates differ between age groups for the different parties. These point to `sex_code:voted_party_cd` and `age:voted_party_cd` interactions, respectively. We will thus include these interactions in our final model.D According to the below plots, we can see there is some initial evidence of different turnout rates of genders and ages by parties, and we will explore this further in our model.  
 
 ```{r, fig.height = 4}
 sex_code_int <- ggplot(vote_long) + 
@@ -311,15 +312,8 @@ ggplot(vote_long) +
 
 
 # Model selection and specification
-Next, We do exhaustive search selection using BIC, starting with the base model of the random intercept for county, and a fixed effects for `sex_code`, `age`, `voted_party_cd`, `sex_code:voted_party_cd`, and `age:voted_party_cd` based on our research questions. We use BIC to select other potential fixed effect predictors. 
 
-BASE MODEL:
-- random intercept `county`
-- fixed effects: `sex_code`, `age`, `voted_party_cd`
-- interactions: `sex_code:voted_party_cd`, `age:voted_party_cd`
-
-EXHAUSTIVE SEARCH: add potential covariates into BASE MODEL
-- `race_code`, `ethnic_code`, `sex_code:age`, `voted_party_cd:race_code`
+Next, We do exhaustive search selection using BIC, starting with the base model of the random intercept for county, and a fixed effects for `sex_code`, `age`, `voted_party_cd`, `sex_code:voted_party_cd`, and `age:voted_party_cd` based on our research questions. We use BIC to select other potential fixed effect predictors and test all possible 2-way interactions. 
 
 ```{r}
 exhaustive_search <- function(raw_model, vars, data) {
