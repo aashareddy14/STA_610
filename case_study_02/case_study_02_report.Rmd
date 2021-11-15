@@ -363,7 +363,7 @@ saveRDS(ex_result_int, "ex_result_int.RDS")
 ```
 
 ```{r, echo = F}
-ex_result_int <- readRDS("ex_result_int.RDS")
+ex_result_int <- readRDS("case_study_02/ex_result_int.RDS")
 ex_result_int %>% arrange(BIC) %>% head(10) %>%
   select(1, 3) %>%
   kbl(caption = "Exhaustive search of fixed effects using BIC") %>%
