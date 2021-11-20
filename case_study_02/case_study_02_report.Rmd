@@ -384,16 +384,98 @@ where $y_{ij}$ is the number of people voted, and $N_{ij}$ is the number of tota
 
 # Results and Interpretation 
 
+```{r}
+base_model <-glmer(
+              cbind(total_voters, total_nonvoters) ~ sex_code + age + voted_party_cd +  
+              sex_code:voted_party_cd + race_code + ethnic_code +
+              age:voted_party_cd + (1 |county_desc), data = vote,
+              family = binomial("logit"), 
+              control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5))
+              )
+```
 
 
+# Interpretations 
+Our estimated intercept is -0.0439. This is the expected log odds of someone voting, across all counties in our sample,
+who is Asian, ages 26-40, female, and did not specify their ethnicity. That means
+the odds of voting is approximately 1. The estimate, clearly is not significant and contains 1 in the confidence interval (on odds scale).
+
+For the purposes of interpretation we fix $\alpha = .05$ for our statements of significance.
+We highlight the following significant results.
+
+On average, we expect the odds of voting for someone between the ages 18-26 to decrease
+by 56% when compared to some that is Ages 26-40.
+
+On average, we expect the odds of voting for someone who is White to increase
+by 47% when compared to some who is Asian. We identified a similar relationship for 
+someone registered with an undesignated race.
+
+On the other hand, we expect the odds of voting for someone who is registered under two or more races to decrease
+by 8% when compared to some who is Asian. We identified a similar relationship for 
+someone registered as black.
+
+On average, we expect the odds of voting for someone who is not Hispanic or Latino to increase
+by 14% when compared to some who has an undesignated ethnicity. Someone who is Latino or 
+Hispanic sees an expected decrease in odds of voting of 25% when compared to someone 
+with an undesignated ethnicity.
+
+The across county variance is 0.0275. This implies a very low ICC.
 
 
+```{r}
+set.seed(5562)
+new_data_sex <- expand.grid(unique(vote$sex_code),
+                            unique(vote$voted_party_cd)) %>% 
+  rename(sex_code = Var1, voted_party_cd = Var2) %>% 
+  mutate(race_code = sample(unique(vote$race_code),1),
+         ethnic_code = sample(unique(vote$ethnic_code),1),
+         age = sample(unique(vote$age),1),
+         county_desc = sample(unique(vote$county_desc),1))
+
+new_data_sex$probs <- predict(base_model, new_data_sex, type="response")
+
+ggplot(new_data_sex, aes(x = sex_code, y = probs, fill = sex_code)) +
+  geom_bar(stat = "Identity") + facet_wrap(~voted_party_cd) + 
+  labs(title = "Effect of party affiliation on sex and probability of voting",
+       y = "Probability of Voting", x = "") +
+  theme(axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()) + 
+  guides(fill=guide_legend(title="Sex"))
+ 
+```
+
+```{r}
+set.seed(5562)
+new_data_age <- expand.grid(unique(vote$age),
+                            unique(vote$voted_party_cd)) %>% 
+  rename(age = Var1, voted_party_cd = Var2) %>% 
+  mutate(race_code = sample(unique(vote$race_code),1),
+         ethnic_code = sample(unique(vote$ethnic_code),1),
+         sex_code = sample(unique(vote$sex_code),1),
+         county_desc = sample(unique(vote$county_desc),1))
+
+new_data_age$probs <- predict(base_model, new_data_age, type="response")
+
+ggplot(new_data_age, aes(x = age, y = probs, fill = age)) +
+  geom_bar(stat = "Identity") + facet_wrap(~voted_party_cd) + 
+  labs(title = "Effect of party affiliation on age group and probability of voting",
+       y = "Probability of Voting", x = "") +
+  theme(axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()) + 
+  guides(fill=guide_legend(title="Age Group"))
+```
 
 
-
-
-
-
+```{r, fig.height=5}
+# dotplot
+library(lattice)
+dotplot(ranef(base_model, condVar = TRUE), font.size = 5, rotate = TRUE, main = F)$county_desc
+```
+The interval plot demonstrates a large amount of heterogeneity in the log odds 
+of voting across our sampled counties. For a registered voter who is Asian, 
+between ages 26-40, female, and did not specify their ethnicity, the odds of voting 
+decreases by more than 32.9% if they are in Robeson county and increases by more 
+than 22% if they are in Cabarrus county.
 
 
 # Appendix
@@ -483,4 +565,13 @@ ggplot(vote_long) +
         plot.title = element_text(size = 10, hjust = 0.5), 
         legend.position = "none") + 
   facet_wrap(~age, ncol= 4)
+```
+
+Table of Main Effects
+
+```{r}
+coef(summary(base_model)) %>%
+  knitr::kable(caption = "Fixed effect estimates on log odds scale") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                latex_options = "HOLD_position")
 ```
