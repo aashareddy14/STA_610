@@ -233,7 +233,7 @@ vote_long %>% select(-county_desc, -total_registered) %>%
 
 ## Research questions 3 and 4: interactions 
 
-Research question 3 asks how the turnout rates different between males and females for different parties, and question 4 asks how turnout rates differ between age groups for the different parties. These point to `sex_code:voted_party_cd` and `age:voted_party_cd` interactions, respectively. We will thus include these interactions in our final model.D According to the below plots, we can see there is some initial evidence of different turnout rates of genders and ages by parties, and we will explore this further in our model.  
+Research question 3 asks how the turnout rates different between males and females for different parties, and question 4 asks how turnout rates differ between age groups for the different parties. These point to `sex_code:voted_party_cd` and `age:voted_party_cd` interactions, respectively. We will thus include these interactions in our final model. According to the below plots, we can see there is some initial evidence of different turnout rates of genders and ages by parties, and we will explore this further in our model.  
 
 ```{r, fig.height = 4}
 sex_code_int <- ggplot(vote_long) + 
@@ -310,7 +310,7 @@ ggplot(vote_long) +
 
 # Model selection and specification
 
-Next, We do exhaustive search selection using BIC, starting with the base model of the random intercept for county, and a fixed effects for `sex_code`, `age`, `voted_party_cd`, `sex_code:voted_party_cd`, and `age:voted_party_cd` based on our research questions. We use BIC to select other potential fixed effect predictors and test all possible 2-way interactions. 
+We first tried to do exhaustive search selection using BIC, starting with the base model of the random intercept for county, and a fixed effects for `sex_code`, `age`, `voted_party_cd`, `sex_code:voted_party_cd`, and `age:voted_party_cd` based on our research questions. We aimed to use BIC to select other potential fixed effect predictors and test all possible 2-way interactions, however, none of our models converged. BIC is thus an unreliable measure to compare models, and we choose to use our model that incorporates elements from the research question as our final model. We also do not fit any random slopes due to convergence issues.
 
 ```{r}
 exhaustive_search <- function(raw_model, vars, data) {
@@ -362,8 +362,7 @@ ex_result_int %>% arrange(BIC) %>% head(10) %>%
                 latex_options = "HOLD_position")
 ```
 
-Based on exhaustive selection, we choose our final model to include the following fixed effects: `race_code`, `ethnic_code`, `sex_code`, `age`, `voted_party_cd`, `sex_code:age`, `voted_party_cd:race_code`, `voted_party_cd:sex_code`, `voted_party_cd:age`.
-
+Our final model is thus: 
 
 $$
 y_{ij} \mid N_{ij}, \pi_{ij} \stackrel{\mathrm{iid}}{\sim} \mathrm{Bin}(N_{ij}, \pi_{ij}),
