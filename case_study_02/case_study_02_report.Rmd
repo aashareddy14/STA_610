@@ -21,6 +21,7 @@ library(patchwork)
 library(lubridate)
 library(gridExtra)
 library(influence.ME)
+library(pROC)
 
 options(scipen = 0, digits = 4)
 ggplot2::theme_set(ggplot2::theme_bw())
@@ -473,6 +474,9 @@ between ages 26-40, female, and did not specify their ethnicity, the odds of vot
 decreases by more than 32.9% if they are in Robeson county and increases by more 
 than 22% if they are in Cabarrus county.
 
+```{r}
+
+```
 
 # Appendix
 
@@ -571,3 +575,19 @@ coef(summary(base_model)) %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
                 latex_options = "HOLD_position")
 ```
+
+## Bayesian Modeling
+```{r}
+bayesian_base_model <-brm(
+              total_voters | trials(total_registered) ~ sex_code + age + voted_party_cd +  
+              sex_code:voted_party_cd + race_code + ethnic_code +
+              age:voted_party_cd + (1 |county_desc), data = vote,
+              family = binomial("logit"),
+              chains = 1)
+
+```
+
+```{r}
+saveRDS(bayesian_base_model, "bayesian_result.RDS")
+```
+
