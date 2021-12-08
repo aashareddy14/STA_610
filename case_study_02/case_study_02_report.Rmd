@@ -22,18 +22,12 @@ library(lubridate)
 library(gridExtra)
 library(influence.ME)
 library(pROC)
+library(tidybayes)
+
 
 options(scipen = 0, digits = 4)
 ggplot2::theme_set(ggplot2::theme_bw())
 ```
-
-
-Notes from 11/9 meeting:
-
-- [Shirley] Bayesian modeling
-- [Shirley] Model assessment (ROC curves, etc.)
-- [Aasha] Update the model selection narrative
-
 
 
 ```{r}
@@ -313,7 +307,7 @@ ggplot(vote_long) +
 
 We first tried to do exhaustive search selection using BIC, starting with the base model of the random intercept for county, and a fixed effects for `sex_code`, `age`, `voted_party_cd`, `sex_code:voted_party_cd`, and `age:voted_party_cd` based on our research questions. We aimed to use BIC to select other potential fixed effect predictors and test all possible 2-way interactions, however, none of our models converged. BIC is thus an unreliable measure to compare models, and we choose to use our model that incorporates elements from the research question as our final model. We also do not fit any random slopes due to convergence issues.
 
-```{r}
+```{r, eval=FALSE}
 exhaustive_search <- function(raw_model, vars, data) {
   y_name <- deparse(raw_model[[2]], width.cutoff = 500L)
   group_name <- deparse(raw_model[[3]], width.cutoff = 500L)
@@ -343,7 +337,7 @@ exhaustive_search <- function(raw_model, vars, data) {
 }
 ```
 
-```{r, message = F, echo = F, cache = T}
+```{r, message = F, echo = F, cache = T, eval=FALSE}
 # may take 2-3 hrs. result saved to 'ex_result_int.RDS'
 ex_result_int <- exhaustive_search(
   raw_model <- cbind(total_voters, total_nonvoters) ~ sex_code + age + voted_party_cd + 
@@ -354,7 +348,7 @@ ex_result_int <- exhaustive_search(
 saveRDS(ex_result_int, "ex_result_int.RDS")
 ```
 
-```{r, echo = F}
+```{r, echo = F, eval=F}
 ex_result_int <- readRDS("case_study_02/ex_result_int.RDS")
 ex_result_int %>% arrange(BIC) %>% head(10) %>%
   select(1, 3) %>%
@@ -382,17 +376,12 @@ where $y_{ij}$ is the number of people voted, and $N_{ij}$ is the number of tota
 # Results and Interpretation 
 
 ```{r}
-base_model <-glmer(
-              cbind(total_voters, total_nonvoters) ~ sex_code + age + voted_party_cd +  
-              sex_code:voted_party_cd + race_code + ethnic_code +
-              age:voted_party_cd + (1 |county_desc), data = vote,
-              family = binomial("logit"), 
-              control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5))
-              )
+bayesian_base_model <- readRDS("bayesian_result.RDS")
 ```
 
-
 # Interpretations 
+
+## Main effects
 Our estimated intercept is -0.0439. This is the expected log odds of someone voting, across all counties in our sample,
 who is Asian, ages 26-40, female, and did not specify their ethnicity. That means
 the odds of voting is approximately 1. The estimate, clearly is not significant and contains 1 in the confidence interval (on odds scale).
@@ -404,7 +393,7 @@ On average, we expect the odds of voting for someone between the ages 18-26 to d
 by 56% when compared to some that is Ages 26-40.
 
 On average, we expect the odds of voting for someone who is White to increase
-by 47% when compared to some who is Asian. We identified a similar relationship for 
+by 46% when compared to some who is Asian. We identified a similar relationship for 
 someone registered with an undesignated race.
 
 On the other hand, we expect the odds of voting for someone who is registered under two or more races to decrease
@@ -416,7 +405,6 @@ by 14% when compared to some who has an undesignated ethnicity. Someone who is L
 Hispanic sees an expected decrease in odds of voting of 25% when compared to someone 
 with an undesignated ethnicity.
 
-The across county variance is 0.0275. This implies a very low ICC.
 
 
 ```{r}
@@ -424,21 +412,24 @@ set.seed(5562)
 new_data_sex <- expand.grid(unique(vote$sex_code),
                             unique(vote$voted_party_cd)) %>% 
   rename(sex_code = Var1, voted_party_cd = Var2) %>% 
-  mutate(race_code = sample(unique(vote$race_code),1),
-         ethnic_code = sample(unique(vote$ethnic_code),1),
-         age = sample(unique(vote$age),1),
-         county_desc = sample(unique(vote$county_desc),1))
+  mutate(race_code = as.factor(sample(unique(vote$race_code),1)),
+         ethnic_code = as.factor(sample(unique(vote$ethnic_code),1)),
+         age = as.factor(sample(unique(vote$age),1)),
+         county_desc = as.factor(sample(unique(vote$county_desc),1)),
+         sex_code = as.factor(sex_code),
+         total_registered = 1
+         )
+new_data_sex$race_code <- droplevels(new_data_sex$race_code)
 
-new_data_sex$probs <- predict(base_model, new_data_sex, type="response")
+new_data_sex$probs <- predict(bayesian_base_model, new_data_sex, type="response")[,1]
 
-ggplot(new_data_sex, aes(x = sex_code, y = probs, fill = sex_code)) +
+p1 <- ggplot(new_data_sex, aes(x = sex_code, y = probs, fill = sex_code)) +
   geom_bar(stat = "Identity") + facet_wrap(~voted_party_cd) + 
-  labs(title = "Effect of party affiliation on sex and probability of voting",
+  labs(title = "Effect of party affiliation on\nsex and probability of voting",
        y = "Probability of Voting", x = "") +
   theme(axis.ticks.x = element_blank(),
         axis.text.x = element_blank()) + 
   guides(fill=guide_legend(title="Sex"))
- 
 ```
 
 ```{r}
@@ -449,25 +440,58 @@ new_data_age <- expand.grid(unique(vote$age),
   mutate(race_code = sample(unique(vote$race_code),1),
          ethnic_code = sample(unique(vote$ethnic_code),1),
          sex_code = sample(unique(vote$sex_code),1),
-         county_desc = sample(unique(vote$county_desc),1))
+         county_desc = sample(unique(vote$county_desc),1),
+         total_registered = 1
+         )
+new_data_age$race_code <- droplevels(new_data_age$race_code)
 
-new_data_age$probs <- predict(base_model, new_data_age, type="response")
+new_data_age$probs <- predict(bayesian_base_model, new_data_age, type="response")[,1]
 
-ggplot(new_data_age, aes(x = age, y = probs, fill = age)) +
+p2 <- ggplot(new_data_age, aes(x = age, y = probs, fill = age)) +
   geom_bar(stat = "Identity") + facet_wrap(~voted_party_cd) + 
-  labs(title = "Effect of party affiliation on age group and probability of voting",
-       y = "Probability of Voting", x = "") +
+  labs(title = "Effect of party affiliation on\nage group and probability of voting",
+       y = "", x = "") +
   theme(axis.ticks.x = element_blank(),
         axis.text.x = element_blank()) + 
   guides(fill=guide_legend(title="Age Group"))
 ```
 
+## Interaction Effects
+```{r, fig.height=4, fig.width=8}
+p1 + p2
+```
 
-```{r, fig.height=5}
+From the above plots we see that older age groups consistently have a higher probability 
+of voting across all parties. There is some variation across parties in probability of voting between 
+age groups 26-40 and 18-15. Overall, there doesn't appear to be a strong interaction effect
+between age group and voter party. We see a similar pattern for gender and voter party. 
+Undesignated gender consistently had the highest probability of voting, while male and females
+often had a similar probability of voting across parties with the exception of CST and 
+DEM.
+
+
+
+```{r, fig.height=4, fig.width=5}
 # dotplot
 library(lattice)
-dotplot(ranef(base_model, condVar = TRUE), font.size = 5, rotate = TRUE, main = F)$county_desc
+tmp <- bayesian_base_model %>%
+  spread_draws(r_county_desc[county_desc,]) %>%
+  median_qi(`Group Means` = r_county_desc)
+sorted_county_desc <- tmp %>%
+  arrange(`Group Means`, desc = T) %>% pull(county_desc)
+p1 <- tmp %>%
+  ggplot(aes(y = factor(county_desc, levels = sorted_county_desc), 
+             x = `Group Means`, xmin = .lower, xmax = .upper)) +
+  geom_pointinterval(orientation = "horizontal", fatten_point = .8) + 
+  labs(title = "Random effect of log odds by County", 
+       y = "County", 
+       x = "Log Odds") + 
+    geom_vline(aes(xintercept = 0)) +
+  theme(axis.text.x = element_text(angle = 45, hjust=1, size = 8)) +
+  coord_flip()
+p1
 ```
+
 The interval plot demonstrates a large amount of heterogeneity in the log odds 
 of voting across our sampled counties. For a registered voter who is Asian, 
 between ages 26-40, female, and did not specify their ethnicity, the odds of voting 
@@ -596,7 +620,20 @@ ggplot(vote_long) +
 
 Table of Main Effects
 
+```{r, eval=F}
+base_model <-glmer(
+              cbind(total_voters, total_nonvoters) ~ sex_code + age + voted_party_cd +  
+              sex_code:voted_party_cd + race_code + ethnic_code +
+              age:voted_party_cd + (1 |county_desc), data = vote,
+              family = binomial("logit"), 
+              control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5))
+              )
+
+saveRDS(base_model, "base_model.RDS")
+```
+
 ```{r}
+base_model <- readRDS('base_model.RDS')
 coef(summary(base_model)) %>%
   knitr::kable(caption = "Fixed effect estimates on log odds scale") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
@@ -604,7 +641,7 @@ coef(summary(base_model)) %>%
 ```
 
 ## Bayesian Modeling
-```{r}
+```{r, eval=FALSE}
 bayesian_base_model <-brm(
               total_voters | trials(total_registered) ~ sex_code + age + voted_party_cd +  
               sex_code:voted_party_cd + race_code + ethnic_code +
@@ -614,7 +651,18 @@ bayesian_base_model <-brm(
 
 ```
 
+Table of Main Effects
 ```{r}
-bayesian_base_model <- readRDS("bayesian_result.RDS")
+summary_pars <- summary(bayesian_base_model)$fixed[, c(1,3,4)]
+# rownames(summary_pars) <- c("Intercept (grand mean)", "numbeds", "sigma", "sd_control", "sd_state")
+colnames(summary_pars) <- c("Est", "Lwr", "Upr")
+summary_pars %>%
+  knitr::kable(caption = "Estimated posterior parameters", 
+               digits = 3)
+```
+
+
+```{r}
+bayesian_<- readRDS("bayesian_result.RDS")
 ```
 
