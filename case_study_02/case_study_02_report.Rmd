@@ -474,8 +474,35 @@ between ages 26-40, female, and did not specify their ethnicity, the odds of vot
 decreases by more than 32.9% if they are in Robeson county and increases by more 
 than 22% if they are in Cabarrus county.
 
+# ROC Curve for Model Evaluation
+We plotted an ROC curve to evaluate our model and see how well it does at predicting
+the whether or not a particular voter voted. From the curve below, you can see that our
+model does better than simply taking random guesses for whether or not a voter belonging
+to a particular demographic within a particularly voted or not. Furthermore, the AUC from
+our ROC curve is 0.681, which indicates that our model does a decent job of prediction since
+the value is greater than 0.5, which is what the AUC would be had we simply taken random guesses
+as to whether an individual voted or not. Thus, our model seems to be useful in predicting whether
+or not individuals of certain demographics in various counties in NC voted or not.
 ```{r}
-
+set.seed(4)
+test_subset <- filter(vote_long, county_desc %in% county_samp)
+test_subset <- test_subset[sample(c(1:nrow(test_subset)), 3000), ]
+test_subset <- test_subset %>% 
+  select(sex_code, age, voted_party_cd, race_code, ethnic_code, county_desc, voted) %>%
+  mutate(race_code = as.factor(race_code),
+         age = as.factor(age),
+         sex_code = as.factor(sex_code),
+         ethnic_code = as.factor(ethnic_code),
+         voted_party_cd = as.factor(voted_party_cd),
+         total_registered = 1,
+         voted = if_else(voted == "Yes", 1, 0),
+         predicted = NA)
+test_subset$race_code <- droplevels(test_subset$race_code)
+set.seed(4)
+test_subset[["predicted"]] <- predict(bayesian_base_model, newdata = test_subset, type="response")[,1]
+roc_data <- roc(data = test_subset, response = "voted", predictor = "predicted")
+plot.roc(roc_data)
+auc(roc_data)
 ```
 
 # Appendix
@@ -588,6 +615,6 @@ bayesian_base_model <-brm(
 ```
 
 ```{r}
-saveRDS(bayesian_base_model, "bayesian_result.RDS")
+bayesian_base_model <- readRDS("bayesian_result.RDS")
 ```
 
