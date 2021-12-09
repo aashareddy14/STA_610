@@ -499,6 +499,19 @@ plot.roc(roc_data)
 auc(roc_data)
 ```
 
+## Posterior Checks for Model
+We also examined the trace plots and posterior distributions of the parameters in our model to check that
+our model had indeed converged. Since we have several parameters, the posterior distributions and trace plots for
+only a few parameters are included below, but in general from our posterior checks, the model indeed converged.
+
+```{r}
+set.seed(7)
+variables <- sample(parnames(bayesian_base_model), 8)
+plot(bayesian_base_model, variable = variables)
+```
+
+\newpage
+
 # Appendix
 
 # Code Appendix
