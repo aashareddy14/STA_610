@@ -43,16 +43,12 @@ The North Carolina State Board of Elections (NCSBE) is the agency charged with t
 ## Research Questions 
 
 1) How did different demographic subgroups vote in the 2020 general elections? For example, how did the turnout for males compare to the turnout for females after controlling for other potential predictors?
---> examine fixed effects for all demographic subgroups
 
 2) Did the overall probability or odds of voting differ by county in 2020? Which counties differ the most from other counties?
---> random intercept for county
 
 3) How did the turnout rates differ between females and males for the different party affiliations?
---> interaction between gender and voted_party_cd
 
 4) How did the turnout rates differ between age groups for the different party affiliations?
---> interaction between age and voted_party_cd
 
 # Data and cleaning 
 We have two datasets that we will merge: voter_stats_20201103.txt contains information about the aggregate counts of registered voters by the demographic variables, and history_stats_20201103.txt contains information about the aggregate counts of voters who actually voted by the demographic variables. We first clean the data. 
@@ -98,8 +94,8 @@ We note that after merging, we have 6081 missing observations for `total_voters`
 Finally, we notice that some counties have instances where the total number of voters is larger than the total number of registered voters (12 observations in total), which is impossible and will not work in our model. For these counties, we reduce the total number of voters to be equal to the total number of registered voters. 
 
 ```{r, include=FALSE}
-apply(vote, 2, function(x) sum(is.na(x))) %>%
-  kbl()
+# apply(vote, 2, function(x) sum(is.na(x))) %>%
+#   kbl()
 
 vote <- vote %>%
   mutate(total_voters = as.numeric(total_voters), 
@@ -116,11 +112,10 @@ vote <- vote %>%
     TRUE ~ total_voters
   )) %>%
   mutate(total_voters = ifelse(is.na(total_voters), 0, total_voters))
-
 ```
 
 
-```{r}
+```{r, include=F}
 # test that all the NAs in the final dataset in voted_party_cd is correct - it is
 registered %>%
   filter(county_desc == "ALAMANCE", voted_party_cd == "CST", race_code == "B", 
@@ -180,7 +175,7 @@ table(vote_long$voted)
 
 Our 2nd research question asks us to examine whether the overall probability or odds of voting differed by county in 2020. This points to inclusion of a random intercept by county. We can see that there is a small amount variation in the proportion of registered voters who voted by county. We will include this variable as our grouping variable in our logistic hierarchical model based on our research questions. 
 
-```{r}
+```{r,fig.height=4,fig.width=5}
 ggplot(vote_long) + 
   geom_bar(aes(x = county_desc, fill = voted), 
            position = "fill") + 
@@ -197,7 +192,7 @@ ggplot(vote_long) +
 
 Our first research questions asks to examine how different demographic subgroups voted, and how turnout for males compared to turnout for females after controlling for other predictors. This points to examination of different fixed effects, with a emphasis on examining gender. In our model selection process, we will test all fixed effects, but we use EDA to examine which fixed effects may be most related to our outcome. `age`, `voted_party_cd`, `race_code`, and `ethnic_code` seem to vary the most among their levels with the proportion of those who voted. Note that we will also definitely include `sex_code` as this is explicitly in our research question.  
 
-```{r, fig.width = 4, fig.height=5}
+```{r, fig.width = 8, fig.height=4}
 names <- vote_long %>% 
   select(-county_desc, -total_registered) %>%
   colnames
@@ -215,14 +210,14 @@ vote_long %>% select(-county_desc, -total_registered) %>%
     position = "fill",
     data = ~subset(.x, type == "barplot")
   ) +
-  facet_wrap(~name, scale = "free", ncol = 2) +
+  facet_wrap(~name, scale = "free", ncol = 3) +
   xlab("") +
   ylab("Proportion") +
   labs(title = "Proportion of registered voters who voted (Yes) \nand did not vote (No) by variable") +
   guides(fill=guide_legend(title="Value")) +
   theme(strip.text.x = element_text(size = 5), 
         legend.position = "right", 
-        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+        axis.text.x = element_text(angle = 90, size = 6, hjust=1))
 ```
 
 
@@ -230,7 +225,7 @@ vote_long %>% select(-county_desc, -total_registered) %>%
 
 Research question 3 asks how the turnout rates different between males and females for different parties, and question 4 asks how turnout rates differ between age groups for the different parties. These point to `sex_code:voted_party_cd` and `age:voted_party_cd` interactions, respectively. We will thus include these interactions in our final model. According to the below plots, we can see there is some initial evidence of different turnout rates of genders and ages by parties, and we will explore this further in our model.  
 
-```{r, fig.height = 4}
+```{r, fig.height = 4, message=F}
 sex_code_int <- ggplot(vote_long) + 
   geom_bar(aes(x = sex_code, fill = voted), 
            position = "fill") + 
@@ -248,64 +243,30 @@ age_int <- ggplot(vote_long) +
         plot.title = element_text(size = 10, hjust = 0.5)) + 
   facet_wrap(~voted_party_cd, ncol = 6)
 
-patchwork <- sex_code_int / age_int
+patchwork <- sex_code_int / age_int +
   plot_layout(guides = "collect", widths = c(1, 1))
 
 patchwork + plot_annotation(
   title = "Proportion of registered voters who voted and did not vote \nvs. gender and age by party")
 ```
 
-We also assess other potential interactions, and find that `sex_code:race_code` and  `voted_party_cd:race_code` could be helpful. We decide to test all two-way interactions in our model selection process described in the next section.
+We also assess other potential interactions, and find that `sex_code:race_code` and  `voted_party_cd:race_code` could be helpful. 
+With that being said, we decide to exclude all two-way interactions that do not 
+address the state research questions. Additional two-way interactions increased the difficulty 
+of fitting a model and greatly increase the difficulty of interpreting our results.
 
 
 ## Assessing random slopes 
-We also assess potential random slopes of our variables by county. We do see some heterogeneity of voter turnout by `ethnic_code` among the counties, so we will test this random slope ???? (See appendix for plots).
-
-```{r}
-# MOVE TO APPENDIX
-# Random slopes 
-
-# voted_party_cd
-ggplot(vote_long) + 
-  geom_bar(aes(x = county_desc, fill = voted), 
-           position = "fill") + 
-  labs(y = "Proportion") +
-  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
-        plot.title = element_text(size = 10, hjust = 0.5)) + 
-  facet_wrap(~voted_party_cd, ncol = 4)
-
-# race_code
-ggplot(vote_long) + 
-  geom_bar(aes(x = county_desc, fill = voted), 
-           position = "fill") + 
-  labs(y = "Proportion") +
-  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
-        plot.title = element_text(size = 10, hjust = 0.5)) + 
-  facet_wrap(~race_code, ncol = 4)
-
-# ethnic_code
-ggplot(vote_long) + 
-  geom_bar(aes(x = county_desc, fill = voted), 
-           position = "fill") + 
-  labs(y = "Proportion") +
-  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
-        plot.title = element_text(size = 10, hjust = 0.5)) + 
-  facet_wrap(~ethnic_code, ncol = 4)
-
-# sex_code
-ggplot(vote_long) + 
-  geom_bar(aes(x = county_desc, fill = voted), 
-           position = "fill") + 
-  labs(y = "Proportion") +
-  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
-        plot.title = element_text(size = 10, hjust = 0.5)) + 
-  facet_wrap(~sex_code, ncol = 4)
-```
+We also assess potential random slopes of our variables by county. We do see some heterogeneity of voter turnout by `ethnic_code` among the counties  (See appendix for plots). Ultimately we decided to not test for random slopes. When only 
+considering random intercepts, we encountered convergence issues with frequentest model 
+and excessive runtimes with the Bayesian implementation. Therefore, the addition of 
+random slopes would only increase the difficulty of fitting a model and did not specifically 
+address our research questions. 
 
 
 # Model selection and specification
 
-We first tried to do exhaustive search selection using BIC, starting with the base model of the random intercept for county, and a fixed effects for `sex_code`, `age`, `voted_party_cd`, `sex_code:voted_party_cd`, and `age:voted_party_cd` based on our research questions. We aimed to use BIC to select other potential fixed effect predictors and test all possible 2-way interactions, however, none of our models converged. BIC is thus an unreliable measure to compare models, and we choose to use our model that incorporates elements from the research question as our final model. We also do not fit any random slopes due to convergence issues.
+We first tried to do exhaustive search selection using BIC, starting with the base model of the random intercept for county, and a fixed effects for `sex_code`, `age`, `voted_party_cd`, `sex_code:voted_party_cd`, and `age:voted_party_cd` based on our research questions. We aimed to use BIC to select other potential fixed effect predictors and test all possible 2-way interactions, however, none of our models converged. BIC is thus an unreliable measure to compare models, and we choose to use our model that incorporates elements from the research question as our final model. As mentioned we do not fit any random slopes due to convergence issues. Due to these convergence issues we ultimately use a Bayesian implementation.
 
 ```{r, eval=FALSE}
 exhaustive_search <- function(raw_model, vars, data) {
@@ -360,16 +321,20 @@ ex_result_int %>% arrange(BIC) %>% head(10) %>%
 Our final model is thus: 
 
 $$
-y_{ij} \mid N_{ij}, \pi_{ij} \stackrel{\mathrm{iid}}{\sim} \mathrm{Bin}(N_{ij}, \pi_{ij}),
+\begin{aligned}
+& y_{ij} \mid N_{ij}, \pi_{ij} \stackrel{\mathrm{iid}}{\sim} \mathrm{Bin}(N_{ij}, \pi_{ij}),
 \quad
 \mathrm{logit}(
 \pi_{ij}
 ) = \boldsymbol{x}_{ij}^\mathrm{T}\boldsymbol{\beta} + b_i,
 \quad
-b_i \sim N(0, \sigma^2),
+b_i \sim N(0, \sigma^2) \\
+& \beta \sim N(\boldsymbol{\mu}, \Sigma), \quad \sigma^2 \sim IG(\nu_0/2, \nu_0\sigma_0^2/2)
+\end{aligned}
 $$
 
-where $y_{ij}$ is the number of people voted, and $N_{ij}$ is the number of total voters for group $j$ in county $i$ (random intercept indexed by $i$). Each $\boldsymbol{x}_{ij}$ consists of 86 elements - the first one being 1 for intercept, and the next 85 elements being the value of the covariates (in one hot form) for group $j$ in county $i$, namely each possible value of `race_code`, `ethnic_code`, `sex_code`, `age`, `voted_party_cd`, `sex_code:age`, `voted_party_cd:race_code`, `voted_party_cd:sex_code`, `voted_party_cd:age` except baseline.
+where $y_{ij}$ is the number of people voted, and $N_{ij}$ is the number of total voters for group $j$ in county $i$ (random intercept indexed by $i$). Each $\boldsymbol{x}_{ij}$ consists of 86 elements - the first one being 1 for intercept, and the next 85 elements being the value of the covariates (in one hot form) for group $j$ in county $i$, namely each possible value of `race_code`, `ethnic_code`, `sex_code`, `age`, `voted_party_cd`, `sex_code:age`, `voted_party_cd:race_code`, `voted_party_cd:sex_code`, `voted_party_cd:age` except baseline. It should be noted 
+that $\Sigma$ is a diagonal matrix as `brms` only allows indpendent priors on the fixed effect coefficients.
 
 
 
@@ -382,28 +347,33 @@ bayesian_base_model <- readRDS("bayesian_result.RDS")
 # Interpretations 
 
 ## Main effects
-Our estimated intercept is -0.0439. This is the expected log odds of someone voting, across all counties in our sample,
+Our estimated intercept is -0.04. This is the expected log odds of someone voting, across all counties in our sample,
 who is Asian, ages 26-40, female, and did not specify their ethnicity. That means
-the odds of voting is approximately 1. The estimate, clearly is not significant and contains 1 in the confidence interval (on odds scale).
+the odds of voting is approximately 1. The estimate, clearly is not significant and contains 1 
+in the posterior credible interval (on odds scale).
 
-For the purposes of interpretation we fix $\alpha = .05$ for our statements of significance.
-We highlight the following significant results.
+For the purposes of interpretation, statements of significance imply that the 95% posterior 
+credible interval did not include 0. The following highlight significant results 
+concerning the relationship between voting odds and various demographics.
 
-On average, we expect the odds of voting for someone between the ages 18-26 to decrease
-by 56% when compared to some that is Ages 26-40.
+* On average, we expect the odds of voting for someone between the ages 18-26 to decrease
+by 56% when compared to some that is Ages 26-40.  
 
-On average, we expect the odds of voting for someone who is White to increase
+* On average, we expect the odds of voting for someone who is White to increase
 by 46% when compared to some who is Asian. We identified a similar relationship for 
-someone registered with an undesignated race.
+someone registered with an undesignated race.   
 
-On the other hand, we expect the odds of voting for someone who is registered under two or more races to decrease
+* On average, we expect the odds of voting for males to increase
+by 42% when compared to females.
+
+* On the other hand, we expect the odds of voting for someone who is registered under two or more races to decrease
 by 8% when compared to some who is Asian. We identified a similar relationship for 
-someone registered as black.
+someone registered as black.  
 
-On average, we expect the odds of voting for someone who is not Hispanic or Latino to increase
+* On average, we expect the odds of voting for someone who is not Hispanic or Latino to increase
 by 14% when compared to some who has an undesignated ethnicity. Someone who is Latino or 
 Hispanic sees an expected decrease in odds of voting of 25% when compared to someone 
-with an undesignated ethnicity.
+with an undesignated ethnicity.  
 
 
 
@@ -463,7 +433,7 @@ p1 + p2
 
 From the above plots we see that older age groups consistently have a higher probability 
 of voting across all parties. There is some variation across parties in probability of voting between 
-age groups 26-40 and 18-15. Overall, there doesn't appear to be a strong interaction effect
+age groups 26-40 and 18-25. Overall, there doesn't appear to be a strong interaction effect
 between age group and voter party. We see a similar pattern for gender and voter party. 
 Undesignated gender consistently had the highest probability of voting, while male and females
 often had a similar probability of voting across parties with the exception of CST and 
@@ -507,7 +477,7 @@ our ROC curve is 0.681, which indicates that our model does a decent job of pred
 the value is greater than 0.5, which is what the AUC would be had we simply taken random guesses
 as to whether an individual voted or not. Thus, our model seems to be useful in predicting whether
 or not individuals of certain demographics in various counties in NC voted or not.
-```{r}
+```{r, fig.height=4, fig.width=5}
 set.seed(4)
 test_subset <- filter(vote_long, county_desc %in% county_samp)
 test_subset <- test_subset[sample(c(1:nrow(test_subset)), 3000), ]
@@ -618,8 +588,53 @@ ggplot(vote_long) +
   facet_wrap(~age, ncol= 4)
 ```
 
-Table of Main Effects
+Random slopes
 
+
+```{r}
+# MOVE TO APPENDIX
+# Random slopes 
+
+# voted_party_cd
+ggplot(vote_long) + 
+  geom_bar(aes(x = county_desc, fill = voted), 
+           position = "fill") + 
+  labs(y = "Proportion") +
+  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+        plot.title = element_text(size = 10, hjust = 0.5)) + 
+  facet_wrap(~voted_party_cd, ncol = 4)
+
+# race_code
+ggplot(vote_long) + 
+  geom_bar(aes(x = county_desc, fill = voted), 
+           position = "fill") + 
+  labs(y = "Proportion") +
+  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+        plot.title = element_text(size = 10, hjust = 0.5)) + 
+  facet_wrap(~race_code, ncol = 4)
+
+# ethnic_code
+ggplot(vote_long) + 
+  geom_bar(aes(x = county_desc, fill = voted), 
+           position = "fill") + 
+  labs(y = "Proportion") +
+  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+        plot.title = element_text(size = 10, hjust = 0.5)) + 
+  facet_wrap(~ethnic_code, ncol = 4)
+
+# sex_code
+ggplot(vote_long) + 
+  geom_bar(aes(x = county_desc, fill = voted), 
+           position = "fill") + 
+  labs(y = "Proportion") +
+  theme(axis.text.x = element_text(angle = 90, vjust = -0.5, hjust=1), 
+        plot.title = element_text(size = 10, hjust = 0.5)) + 
+  facet_wrap(~sex_code, ncol = 4)
+```
+
+
+
+Table of Main Effects
 ```{r, eval=F}
 base_model <-glmer(
               cbind(total_voters, total_nonvoters) ~ sex_code + age + voted_party_cd +  
